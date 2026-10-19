@@ -38,6 +38,124 @@ pub struct Customer {
     pub created_at: DateTime<Utc>,
 }
 
+/// Whether a catalog item is sold to customers, bought from vendors, or both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ProductKind {
+    Sale,
+    Purchase,
+    Both,
+}
+
+impl ProductKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProductKind::Sale => "Sale",
+            ProductKind::Purchase => "Purchase",
+            ProductKind::Both => "Both",
+        }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Purchase" => ProductKind::Purchase,
+            "Both" => ProductKind::Both,
+            _ => ProductKind::Sale,
+        }
+    }
+
+    /// True when the item can appear on sales documents (invoices/estimates).
+    pub fn sellable(&self) -> bool {
+        matches!(self, ProductKind::Sale | ProductKind::Both)
+    }
+
+    /// True when the item can appear on purchase documents (bills).
+    pub fn purchasable(&self) -> bool {
+        matches!(self, ProductKind::Purchase | ProductKind::Both)
+    }
+}
+
+/// A catalog item (good or service) with default pricing and linked GL accounts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Product {
+    pub id: Uuid,
+    pub name: String,
+    pub kind: ProductKind,
+    pub unit: String,
+    pub default_price: Decimal,
+    pub tax_rate: Decimal,
+    /// Income account code used on sales documents (e.g. "4000").
+    pub income_account_code: String,
+    /// Expense account code used on purchase documents (e.g. "6000").
+    pub expense_account_code: String,
+    pub active: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Vendor {
+    pub id: Uuid,
+    pub name: String,
+    pub code: String,
+    pub email: String,
+    pub phone: String,
+    pub address: String,
+    pub city: String,
+    pub country: String,
+    pub postal_code: String,
+    pub currency: String,
+    pub payment_terms_days: u32,
+    pub notes: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BillStatus {
+    Unpaid,
+    Partial,
+    Paid,
+}
+
+impl BillStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BillStatus::Unpaid => "Unpaid",
+            BillStatus::Partial => "Partial",
+            BillStatus::Paid => "Paid",
+        }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Partial" => BillStatus::Partial,
+            "Paid" => BillStatus::Paid,
+            _ => BillStatus::Unpaid,
+        }
+    }
+}
+
+/// A supplier bill awaiting payment (accounts payable document).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VendorBill {
+    pub id: Uuid,
+    pub bill_number: String,
+    pub vendor_id: Uuid,
+    pub vendor_name: String,
+    pub issue_date: NaiveDate,
+    pub due_date: NaiveDate,
+    pub status: BillStatus,
+    pub items: Vec<InvoiceItem>,
+    pub subtotal: Decimal,
+    pub tax_rate: Decimal,
+    pub tax_amount: Decimal,
+    pub total_amount: Decimal,
+    pub currency: String,
+    pub notes: String,
+    pub journal_entry_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InvoiceStatus {
     Draft,

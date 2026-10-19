@@ -114,6 +114,34 @@ impl NumberingEngine {
         };
         format!("DO-{}-{}-{:02}{:03}", z, c, current_year, sequence)
     }
+
+    /// Formats an Estimate (Quote) Number using the same zone/customer routing
+    /// as invoices, with the EST document prefix.
+    /// Pattern: EST-{ZONE}-{CUST}-{YY}{SEQ:03}
+    /// Example: EST-100-ARF-26001
+    pub fn format_estimate_number(zone: &str, cust_code: &str, sequence: u32) -> String {
+        let current_year = Utc::now().year() % 100;
+        let z = if zone.trim().is_empty() {
+            "GEN"
+        } else {
+            zone.trim()
+        };
+        let c = if cust_code.trim().is_empty() {
+            "CUS"
+        } else {
+            cust_code.trim()
+        };
+        format!("EST-{}-{}-{:02}{:03}", z, c, current_year, sequence)
+    }
+
+    /// Formats a Vendor Bill Number. Bills are internal payables, so they use a
+    /// flat global sequence instead of postal routing.
+    /// Pattern: BILL-{YY}{SEQ:03}
+    /// Example: BILL-26001
+    pub fn format_bill_number(sequence: u32) -> String {
+        let current_year = Utc::now().year() % 100;
+        format!("BILL-{:02}{:03}", current_year, sequence)
+    }
 }
 
 #[cfg(test)]

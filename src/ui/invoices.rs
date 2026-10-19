@@ -669,6 +669,10 @@ fn render_invoice_form(
             .map(|c| c.currency.clone())
             .unwrap_or_else(|| "USD".to_string());
 
+        let products = repo.get_products().unwrap_or_default();
+        let sellable: Vec<&crate::core::model::Product> =
+            products.iter().filter(|p| p.kind.sellable()).collect();
+
         for (idx, item) in state.items.iter_mut().enumerate() {
             let qty = Decimal::from_str(&item.quantity).unwrap_or(Decimal::ZERO);
             let price = Decimal::from_str(&item.unit_price).unwrap_or(Decimal::ZERO);
@@ -680,6 +684,30 @@ fn render_invoice_form(
 
             ui.horizontal(|ui| {
                 ui.label(format!("{}.", idx + 1));
+
+                let selected_name = sellable
+                    .iter()
+                    .find(|p| p.name == item.description && p.unit == item.unit)
+                    .map(|p| p.name.as_str())
+                    .unwrap_or("Catalog...");
+                egui::ComboBox::from_id_salt(("inv_product_combo", idx))
+                    .selected_text(selected_name)
+                    .show_ui(ui, |ui| {
+                        for p in &sellable {
+                            if ui
+                                .selectable_label(p.name == item.description, &p.name)
+                                .clicked()
+                            {
+                                item.description = p.name.clone();
+                                item.unit = p.unit.clone();
+                                item.unit_price = p.default_price.to_string();
+                                if p.tax_rate > Decimal::ZERO {
+                                    state.tax_rate_str = p.tax_rate.to_string();
+                                }
+                            }
+                        }
+                    });
+
                 ui.add(
                     egui::TextEdit::singleline(&mut item.description)
                         .hint_text("Item or Service description")

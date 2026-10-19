@@ -10,6 +10,7 @@ use crate::ui::emails::{self, EmailCenterState};
 use crate::ui::fx::{self, FxState};
 use crate::ui::invoices::{self, InvoiceFormState};
 use crate::ui::ledger;
+use crate::ui::purchases::{self, PurchasesState};
 use crate::ui::settings::{self, SettingsState};
 use crate::ui::sync_view::{self, SyncViewState};
 use crate::ui::theme::{Theme, ThemeMode};
@@ -20,6 +21,7 @@ pub enum Tab {
     Invoices,
     Deliveries,
     Customers,
+    Purchases,
     GeneralLedger,
     FxRates,
     Reports,
@@ -37,7 +39,7 @@ struct NavItem {
     icon: &'static str,
 }
 
-const NAV_ITEMS: [NavItem; 11] = [
+const NAV_ITEMS: [NavItem; 12] = [
     NavItem {
         tab: Tab::Dashboard,
         title: "Dashboard",
@@ -57,6 +59,11 @@ const NAV_ITEMS: [NavItem; 11] = [
         tab: Tab::Customers,
         title: "Customers",
         icon: "👥",
+    },
+    NavItem {
+        tab: Tab::Purchases,
+        title: "Purchases",
+        icon: "🧾",
     },
     NavItem {
         tab: Tab::GeneralLedger,
@@ -101,6 +108,7 @@ pub struct SurfApp {
     customer_state: CustomerFormState,
     invoice_state: InvoiceFormState,
     delivery_state: DeliveryFormState,
+    purchases_state: PurchasesState,
     sync_state: SyncViewState,
     company_state: CompanyFormState,
     email_state: EmailCenterState,
@@ -129,6 +137,7 @@ impl SurfApp {
             customer_state: CustomerFormState::default(),
             invoice_state: InvoiceFormState::default(),
             delivery_state: DeliveryFormState::default(),
+            purchases_state: PurchasesState::default(),
             sync_state: SyncViewState::default(),
             company_state: CompanyFormState::default(),
             email_state: EmailCenterState::default(),
@@ -370,6 +379,14 @@ impl SurfApp {
                             &mut notif_buffer,
                         );
                     }
+                    Tab::Purchases => {
+                        purchases::render(
+                            ui,
+                            &self.repo,
+                            &mut self.purchases_state,
+                            &mut notif_buffer,
+                        );
+                    }
                     Tab::GeneralLedger => {
                         ledger::render(ui, &self.repo);
                     }
@@ -412,6 +429,7 @@ impl SurfApp {
                         "Invoices" => Tab::Invoices,
                         "Deliveries" => Tab::Deliveries,
                         "Customers" => Tab::Customers,
+                        "Purchases" => Tab::Purchases,
                         "GeneralLedger" => Tab::GeneralLedger,
                         "FxRates" => Tab::FxRates,
                         "Reports" => Tab::Reports,

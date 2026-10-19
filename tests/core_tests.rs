@@ -110,6 +110,155 @@ fn test_double_entry_invoice_posting() {
 }
 
 #[test]
+fn test_vendor_bill_posting_and_payment() {
+    use Surf::core::model::{BillStatus, InvoiceItem, Vendor, VendorBill};
+
+    let repo = Repository::in_memory().unwrap();
+
+    // Vendor persistence roundtrip
+    let vendor = Vendor {
+        id: Uuid::new_v4(),
+        name: "Gulf Steel Supply".to_string(),
+        code: "GSS".to_string(),
+        email: "sales@gulfsteel.ae".to_string(),
+        phone: "+971 4 555 0100".to_string(),
+        address: "Warehouse 12, Industrial Area".to_string(),
+        city: "Sharjah".to_string(),
+        country: "UAE".to_string(),
+        postal_code: "51111".to_string(),
+        currency: "AED".to_string(),
+        payment_terms_days: 45,
+        notes: "".to_string(),
+        created_at: chrono::Utc::now(),
+    };
+    repo.insert_vendor(&vendor, true).unwrap();
+    let vendors = repo.get_vendors().unwrap();
+    assert_eq!(vendors.len(), 1);
+    assert_eq!(vendors[0].payment_terms_days, 45);
+
+    // Bill: 5000 subtotal + 5% tax = 5250
+    let bill = VendorBill {
+        id: Uuid::new_v4(),
+        bill_number: NumberingEngine::format_bill_number(1),
+        vendor_id: vendor.id,
+        vendor_name: vendor.name.clone(),
+        issue_date: chrono::Utc::now().date_naive(),
+        due_date: chrono::Utc::now().date_naive() + chrono::Duration::days(45),
+        status: BillStatus::Unpaid,
+        items: vec![InvoiceItem {
+            id: Uuid::new_v4(),
+            description: "Steel Beams".to_string(),
+            quantity: dec!(50),
+            unit: "Pcs".to_string(),
+            unit_price: dec!(100),
+            discount_pct: Decimal::ZERO,
+            amount: dec!(5000),
+        }],
+        subtotal: dec!(5000),
+        tax_rate: dec!(5),
+        tax_amount: dec!(250),
+        total_amount: dec!(5250),
+        currency: "AED".to_string(),
+        notes: "".to_string(),
+        journal_entry_id: None,
+        created_at: chrono::Utc::now(),
+    };
+
+    // Post bill: Debit Expense 5000, Debit Input Tax 250, Credit AP 5250
+    let accounts = repo.get_accounts().unwrap();
+    let ap = accounts.iter().find(|a| a.code == "2000").unwrap();
+    let expense = accounts.iter().find(|a| a.code == "6000").unwrap();
+    let tax = accounts.iter().find(|a| a.code == "2200").unwrap();
+    let cash = accounts.iter().find(|a| a.code == "1000").unwrap();
+
+    let je = AccountingEngine::create_bill_journal_entry(&bill, ap, expense, tax, 1).unwrap();
+    AccountingEngine::validate_entry(&je).unwrap();
+    assert_eq!(je.lines.len(), 3);
+    repo.insert_journal_entry(&je, true).unwrap();
+
+    let accs_after = repo.get_accounts().unwrap();
+    let ap_after = accs_after.iter().find(|a| a.code == "2000").unwrap();
+    let exp_after = accs_after.iter().find(|a| a.code == "6000").unwrap();
+    let tax_after = accs_after.iter().find(|a| a.code == "2200").unwrap();
+    assert_eq!(ap_after.balance, dec!(5250));
+    assert_eq!(exp_after.balance, dec!(5000));
+    // Input tax (250 debit) offsets the seeded 0 credit-normal balance.
+    assert_eq!(tax_after.balance, dec!(-250));
+
+    // Pay bill: Debit AP, Credit Cash
+    let mut paid = bill.clone();
+    paid.status = BillStatus::Paid;
+    let pay_je = AccountingEngine::create_bill_payment_journal_entry(&paid, cash, ap, 2).unwrap();
+    repo.insert_journal_entry(&pay_je, true).unwrap();
+
+    let accs_final = repo.get_accounts().unwrap();
+    let ap_final = accs_final.iter().find(|a| a.code == "2000").unwrap();
+    let cash_final = accs_final.iter().find(|a| a.code == "1000").unwrap();
+    assert_eq!(ap_final.balance, dec!(0));
+    assert_eq!(cash_final.balance, dec!(-5250));
+
+    // Bill persistence roundtrip
+    repo.insert_vendor_bill(&paid, true).unwrap();
+    let bills = repo.get_vendor_bills().unwrap();
+    assert_eq!(bills.len(), 1);
+    assert_eq!(bills[0].status, BillStatus::Paid);
+    assert_eq!(bills[0].vendor_name, "Gulf Steel Supply");
+}
+
+#[test]
+fn test_product_catalog_persistence_and_kinds() {
+    use Surf::core::model::{Product, ProductKind};
+
+    let repo = Repository::in_memory().unwrap();
+
+    let sellable = Product {
+        id: Uuid::new_v4(),
+        name: "Consulting Hour".to_string(),
+        kind: ProductKind::Sale,
+        unit: "Hour".to_string(),
+        default_price: dec!(150),
+        tax_rate: dec!(5),
+        income_account_code: "4000".to_string(),
+        expense_account_code: "6000".to_string(),
+        active: true,
+        created_at: chrono::Utc::now(),
+    };
+    let purchasable = Product {
+        id: Uuid::new_v4(),
+        name: "Packaging Material".to_string(),
+        kind: ProductKind::Purchase,
+        unit: "Box".to_string(),
+        default_price: dec!(12),
+        tax_rate: Decimal::ZERO,
+        income_account_code: "4000".to_string(),
+        expense_account_code: "6000".to_string(),
+        active: true,
+        created_at: chrono::Utc::now(),
+    };
+    repo.insert_product(&sellable, true).unwrap();
+    repo.insert_product(&purchasable, true).unwrap();
+
+    let products = repo.get_products().unwrap();
+    assert_eq!(products.len(), 2);
+
+    let consulting = products
+        .iter()
+        .find(|p| p.name == "Consulting Hour")
+        .unwrap();
+    assert_eq!(consulting.kind, ProductKind::Sale);
+    assert!(consulting.kind.sellable());
+    assert!(!consulting.kind.purchasable());
+    assert_eq!(consulting.default_price, dec!(150));
+
+    let packaging = products
+        .iter()
+        .find(|p| p.name == "Packaging Material")
+        .unwrap();
+    assert!(packaging.kind.purchasable());
+    assert!(!packaging.kind.sellable());
+}
+
+#[test]
 fn test_sync_bundle_roundtrip() {
     let repo_a = Repository::in_memory().unwrap();
     let repo_b = Repository::in_memory().unwrap();

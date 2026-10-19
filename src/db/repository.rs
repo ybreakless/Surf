@@ -8,8 +8,9 @@ use uuid::Uuid;
 use crate::core::accounting::AccountingEngine;
 use crate::core::fx::{FxRate, RateSource};
 use crate::core::model::{
-    Account, AccountType, CompanyProfile, Customer, DeliveryItem, DeliveryOrder, DeliveryStatus,
-    Invoice, InvoiceItem, InvoiceStatus, JournalEntry, JournalLine, RecurringInvoice,
+    Account, AccountType, BillStatus, CompanyProfile, Customer, DeliveryItem, DeliveryOrder,
+    DeliveryStatus, Invoice, InvoiceItem, InvoiceStatus, JournalEntry, JournalLine, Product,
+    ProductKind, RecurringInvoice, Vendor, VendorBill,
 };
 use crate::core::money::Currency;
 use crate::core::sync::{ChangeRecord, SyncAction, SyncBundle};
@@ -201,6 +202,58 @@ impl Repository {
                 ok INTEGER NOT NULL,
                 result TEXT NOT NULL,
                 ran_at TEXT NOT NULL
+            );
+            "#,
+        ),
+        (
+            "0004_purchases",
+            r#"
+            CREATE TABLE IF NOT EXISTS vendors (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                address TEXT,
+                city TEXT,
+                country TEXT,
+                postal_code TEXT,
+                currency TEXT NOT NULL,
+                payment_terms_days INTEGER NOT NULL DEFAULT 30,
+                notes TEXT,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS products (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                unit TEXT NOT NULL DEFAULT 'Pcs',
+                default_price TEXT NOT NULL DEFAULT '0',
+                tax_rate TEXT NOT NULL DEFAULT '0',
+                income_account_code TEXT NOT NULL DEFAULT '4000',
+                expense_account_code TEXT NOT NULL DEFAULT '6000',
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS vendor_bills (
+                id TEXT PRIMARY KEY,
+                bill_number TEXT NOT NULL UNIQUE,
+                vendor_id TEXT NOT NULL,
+                vendor_name TEXT NOT NULL,
+                issue_date TEXT NOT NULL,
+                due_date TEXT NOT NULL,
+                status TEXT NOT NULL,
+                items_json TEXT NOT NULL,
+                subtotal TEXT NOT NULL,
+                tax_rate TEXT NOT NULL,
+                tax_amount TEXT NOT NULL,
+                total_amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                notes TEXT,
+                journal_entry_id TEXT,
+                created_at TEXT NOT NULL
             );
             "#,
         ),
@@ -901,6 +954,217 @@ impl Repository {
         Ok((count as u32) + 1)
     }
 
+    // --- Vendors ---
+    pub fn insert_vendor(&self, v: &Vendor, track_sync: bool) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO vendors (id, name, code, email, phone, address, city, country, postal_code, currency, payment_terms_days, notes, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            params![
+                v.id.to_string(),
+                v.name,
+                v.code,
+                v.email,
+                v.phone,
+                v.address,
+                v.city,
+                v.country,
+                v.postal_code,
+                v.currency,
+                v.payment_terms_days as i64,
+                v.notes,
+                v.created_at.to_rfc3339()
+            ],
+        )?;
+
+        if track_sync {
+            let json = serde_json::to_string(v).unwrap_or_default();
+            self.record_sync_change("vendor", &v.id.to_string(), SyncAction::Upsert, &json)?;
+        }
+        Ok(())
+    }
+
+    pub fn get_vendors(&self) -> Result<Vec<Vendor>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, code, email, phone, address, city, country, postal_code, currency, payment_terms_days, notes, created_at FROM vendors ORDER BY name ASC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let id_str: String = row.get(0)?;
+            let created_at_str: String = row.get(12)?;
+            Ok(Vendor {
+                id: Uuid::parse_str(&id_str).unwrap_or_default(),
+                name: row.get(1)?,
+                code: row.get(2)?,
+                email: row.get(3)?,
+                phone: row.get(4)?,
+                address: row.get(5)?,
+                city: row.get(6)?,
+                country: row.get(7)?,
+                postal_code: row.get(8)?,
+                currency: row.get(9)?,
+                payment_terms_days: row.get::<_, i64>(10)? as u32,
+                notes: row.get(11)?,
+                created_at: DateTime::parse_from_rfc3339(&created_at_str)
+                    .map(|d| d.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now()),
+            })
+        })?;
+
+        let mut res = Vec::new();
+        for r in rows {
+            res.push(r?);
+        }
+        Ok(res)
+    }
+
+    // --- Products & Services ---
+    pub fn insert_product(&self, p: &Product, track_sync: bool) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO products (id, name, kind, unit, default_price, tax_rate, income_account_code, expense_account_code, active, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                p.id.to_string(),
+                p.name,
+                p.kind.as_str(),
+                p.unit,
+                p.default_price.to_string(),
+                p.tax_rate.to_string(),
+                p.income_account_code,
+                p.expense_account_code,
+                p.active as i64,
+                p.created_at.to_rfc3339()
+            ],
+        )?;
+
+        if track_sync {
+            let json = serde_json::to_string(p).unwrap_or_default();
+            self.record_sync_change("product", &p.id.to_string(), SyncAction::Upsert, &json)?;
+        }
+        Ok(())
+    }
+
+    pub fn get_products(&self) -> Result<Vec<Product>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, kind, unit, default_price, tax_rate, income_account_code, expense_account_code, active, created_at FROM products ORDER BY name ASC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let id_str: String = row.get(0)?;
+            let kind_str: String = row.get(2)?;
+            let created_at_str: String = row.get(9)?;
+            Ok(Product {
+                id: Uuid::parse_str(&id_str).unwrap_or_default(),
+                name: row.get(1)?,
+                kind: ProductKind::from_str(&kind_str),
+                unit: row.get(3)?,
+                default_price: Decimal::from_str(&row.get::<_, String>(4)?)
+                    .unwrap_or(Decimal::ZERO),
+                tax_rate: Decimal::from_str(&row.get::<_, String>(5)?).unwrap_or(Decimal::ZERO),
+                income_account_code: row.get(6)?,
+                expense_account_code: row.get(7)?,
+                active: row.get::<_, i64>(8)? != 0,
+                created_at: DateTime::parse_from_rfc3339(&created_at_str)
+                    .map(|d| d.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now()),
+            })
+        })?;
+
+        let mut res = Vec::new();
+        for r in rows {
+            res.push(r?);
+        }
+        Ok(res)
+    }
+
+    // --- Vendor Bills ---
+    pub fn insert_vendor_bill(&self, b: &VendorBill, track_sync: bool) -> Result<()> {
+        let items_json = serde_json::to_string(&b.items).unwrap_or_default();
+        self.conn.execute(
+            "INSERT OR REPLACE INTO vendor_bills (id, bill_number, vendor_id, vendor_name, issue_date, due_date, status, items_json, subtotal, tax_rate, tax_amount, total_amount, currency, notes, journal_entry_id, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![
+                b.id.to_string(),
+                b.bill_number,
+                b.vendor_id.to_string(),
+                b.vendor_name,
+                b.issue_date.to_string(),
+                b.due_date.to_string(),
+                b.status.as_str(),
+                items_json,
+                b.subtotal.to_string(),
+                b.tax_rate.to_string(),
+                b.tax_amount.to_string(),
+                b.total_amount.to_string(),
+                b.currency,
+                b.notes,
+                b.journal_entry_id.map(|id| id.to_string()),
+                b.created_at.to_rfc3339()
+            ],
+        )?;
+
+        if track_sync {
+            let json = serde_json::to_string(b).unwrap_or_default();
+            self.record_sync_change("vendor_bill", &b.id.to_string(), SyncAction::Upsert, &json)?;
+        }
+        Ok(())
+    }
+
+    pub fn get_vendor_bills(&self) -> Result<Vec<VendorBill>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, bill_number, vendor_id, vendor_name, issue_date, due_date, status, items_json, subtotal, tax_rate, tax_amount, total_amount, currency, notes, journal_entry_id, created_at FROM vendor_bills ORDER BY issue_date DESC, created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let id_str: String = row.get(0)?;
+            let vendor_id_str: String = row.get(2)?;
+            let issue_str: String = row.get(4)?;
+            let due_str: String = row.get(5)?;
+            let status_str: String = row.get(6)?;
+            let items_json: String = row.get(7)?;
+            let subtotal_str: String = row.get(8)?;
+            let tax_rate_str: String = row.get(9)?;
+            let tax_amount_str: String = row.get(10)?;
+            let total_str: String = row.get(11)?;
+            let journal_id_opt: Option<String> = row.get(14)?;
+            let created_at_str: String = row.get(15)?;
+
+            let items: Vec<InvoiceItem> = serde_json::from_str(&items_json).unwrap_or_default();
+
+            Ok(VendorBill {
+                id: Uuid::parse_str(&id_str).unwrap_or_default(),
+                bill_number: row.get(1)?,
+                vendor_id: Uuid::parse_str(&vendor_id_str).unwrap_or_default(),
+                vendor_name: row.get(3)?,
+                issue_date: NaiveDate::parse_from_str(&issue_str, "%Y-%m-%d")
+                    .unwrap_or_else(|_| Utc::now().date_naive()),
+                due_date: NaiveDate::parse_from_str(&due_str, "%Y-%m-%d")
+                    .unwrap_or_else(|_| Utc::now().date_naive()),
+                status: BillStatus::from_str(&status_str),
+                items,
+                subtotal: Decimal::from_str(&subtotal_str).unwrap_or(Decimal::ZERO),
+                tax_rate: Decimal::from_str(&tax_rate_str).unwrap_or(Decimal::ZERO),
+                tax_amount: Decimal::from_str(&tax_amount_str).unwrap_or(Decimal::ZERO),
+                total_amount: Decimal::from_str(&total_str).unwrap_or(Decimal::ZERO),
+                currency: row.get(12)?,
+                notes: row.get(13)?,
+                journal_entry_id: journal_id_opt.and_then(|s| Uuid::parse_str(&s).ok()),
+                created_at: DateTime::parse_from_rfc3339(&created_at_str)
+                    .map(|d| d.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now()),
+            })
+        })?;
+
+        let mut res = Vec::new();
+        for r in rows {
+            res.push(r?);
+        }
+        Ok(res)
+    }
+
+    pub fn next_bill_sequence(&self) -> Result<u32> {
+        let count: i64 = self
+            .conn
+            .query_row("SELECT count(*) FROM vendor_bills", [], |r| r.get(0))?;
+        Ok((count as u32) + 1)
+    }
+
     // --- Journal Entries ---
     pub fn insert_journal_entry(&self, je: &JournalEntry, track_sync: bool) -> Result<()> {
         let lines_json = serde_json::to_string(&je.lines).unwrap_or_default();
@@ -1064,6 +1328,24 @@ impl Repository {
                 "account" => {
                     if let Ok(acc) = serde_json::from_str::<Account>(&change.payload_json) {
                         self.insert_account(&acc, false)?;
+                        applied_count += 1;
+                    }
+                }
+                "vendor" => {
+                    if let Ok(v) = serde_json::from_str::<Vendor>(&change.payload_json) {
+                        self.insert_vendor(&v, false)?;
+                        applied_count += 1;
+                    }
+                }
+                "product" => {
+                    if let Ok(p) = serde_json::from_str::<Product>(&change.payload_json) {
+                        self.insert_product(&p, false)?;
+                        applied_count += 1;
+                    }
+                }
+                "vendor_bill" => {
+                    if let Ok(b) = serde_json::from_str::<VendorBill>(&change.payload_json) {
+                        self.insert_vendor_bill(&b, false)?;
                         applied_count += 1;
                     }
                 }

@@ -2,7 +2,7 @@ use chrono::Utc;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use super::model::{Account, AccountType, Invoice, JournalEntry, JournalLine};
+use super::model::{Account, AccountType, Invoice, JournalEntry, JournalLine, VendorBill};
 
 pub struct AccountingEngine;
 
@@ -191,6 +191,104 @@ impl AccountingEngine {
             entry_date: invoice.due_date,
             memo: format!("Payment received: {}", invoice.invoice_number),
             reference: Some(invoice.invoice_number.clone()),
+            lines,
+            created_at: Utc::now(),
+        };
+
+        Self::validate_entry(&entry)?;
+        Ok(entry)
+    }
+
+    /// Generates the balancing journal entry when a Vendor Bill is recorded.
+    /// Debit: linked Expense account (subtotal)
+    /// Debit: Sales Tax Payable (input VAT recovery, if tax > 0)
+    /// Credit: Accounts Payable (total)
+    pub fn create_bill_journal_entry(
+        bill: &VendorBill,
+        ap_account: &Account,
+        expense_account: &Account,
+        tax_account: &Account,
+        sequence: u32,
+    ) -> Result<JournalEntry, String> {
+        let mut lines = Vec::new();
+
+        lines.push(JournalLine {
+            account_id: expense_account.id,
+            account_code: expense_account.code.clone(),
+            account_name: expense_account.name.clone(),
+            debit: bill.subtotal,
+            credit: Decimal::ZERO,
+            memo: format!("Bill {} from {}", bill.bill_number, bill.vendor_name),
+        });
+
+        if bill.tax_amount > Decimal::ZERO {
+            lines.push(JournalLine {
+                account_id: tax_account.id,
+                account_code: tax_account.code.clone(),
+                account_name: tax_account.name.clone(),
+                debit: bill.tax_amount,
+                credit: Decimal::ZERO,
+                memo: format!("Input tax on bill {}", bill.bill_number),
+            });
+        }
+
+        lines.push(JournalLine {
+            account_id: ap_account.id,
+            account_code: ap_account.code.clone(),
+            account_name: ap_account.name.clone(),
+            debit: Decimal::ZERO,
+            credit: bill.total_amount,
+            memo: format!("Payable: {} ({})", bill.bill_number, bill.vendor_name),
+        });
+
+        let entry = JournalEntry {
+            id: Uuid::new_v4(),
+            entry_number: format!("JE-{:04}", sequence),
+            entry_date: bill.issue_date,
+            memo: format!("Recording Bill {}", bill.bill_number),
+            reference: Some(bill.bill_number.clone()),
+            lines,
+            created_at: Utc::now(),
+        };
+
+        Self::validate_entry(&entry)?;
+        Ok(entry)
+    }
+
+    /// Generates the balancing journal entry when a Vendor Bill is paid.
+    /// Debit: Accounts Payable (2000)
+    /// Credit: Cash and Bank (1000)
+    pub fn create_bill_payment_journal_entry(
+        bill: &VendorBill,
+        cash_account: &Account,
+        ap_account: &Account,
+        sequence: u32,
+    ) -> Result<JournalEntry, String> {
+        let lines = vec![
+            JournalLine {
+                account_id: ap_account.id,
+                account_code: ap_account.code.clone(),
+                account_name: ap_account.name.clone(),
+                debit: bill.total_amount,
+                credit: Decimal::ZERO,
+                memo: format!("Clear A/P for {}", bill.bill_number),
+            },
+            JournalLine {
+                account_id: cash_account.id,
+                account_code: cash_account.code.clone(),
+                account_name: cash_account.name.clone(),
+                debit: Decimal::ZERO,
+                credit: bill.total_amount,
+                memo: format!("Payment sent for {}", bill.bill_number),
+            },
+        ];
+
+        let entry = JournalEntry {
+            id: Uuid::new_v4(),
+            entry_number: format!("JE-{:04}", sequence),
+            entry_date: bill.due_date,
+            memo: format!("Bill payment: {}", bill.bill_number),
+            reference: Some(bill.bill_number.clone()),
             lines,
             created_at: Utc::now(),
         };
