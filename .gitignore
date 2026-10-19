@@ -6,3 +6,8 @@ surf_data.db-journal
 *.db.bak
 exports/
 /tmp/
+
+# Flatpak build artifacts
+.flatpak-builder/
+flatpak-dist/
+flatpak-repo/
