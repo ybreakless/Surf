@@ -56,8 +56,12 @@ cargo fmt                     # project-style; run before commit
    persistence, tgju HTML fixture parse. Every new core fn gets a test.
 9. **Zero-warning gate**: `cargo clippy --all-targets` and `cargo check` must
    both be quiet before you finish a task.
-10. **No commits unless the user explicitly asks.** Current repo status:
-    everything is untracked, no baseline commit yet.
+10. **Commit authorship**: all commits by the agent use author
+    `"Code" <ybreakless@gmail.com>` with a detailed description body
+    (`-c user.name=Code -c user.email=ybreakless@gmail.com`). Amend this rule:
+    commits happen whenever the user asks to commit changes.
+11. **No commits unless the user explicitly asks.** Baseline commit exists:
+    `46fa750` (initial import, 2026-10-19).
 
 ## Parallel-agents advisory
 
