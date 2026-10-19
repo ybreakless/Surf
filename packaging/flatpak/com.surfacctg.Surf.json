@@ -1,0 +1,52 @@
+{
+    "id": "com.surfacctg.Surf",
+    "runtime": "org.freedesktop.Platform",
+    "runtime-version": "24.08",
+    "sdk": "org.freedesktop.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "command": "Surf",
+    "finish-args": [
+        "--share=ipc",
+        "--socket=x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--share=network"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/debug",
+        "*.a",
+        "*.la"
+    ],
+    "modules": [
+        {
+            "name": "Surf",
+            "buildsystem": "simple",
+            "build-options": {
+                "append-path": "/usr/lib/sdk/rust-stable/bin",
+                "env": {
+                    "CARGO_TARGET_DIR": "target-flatpak"
+                },
+                "build-args": [
+                    "--share=network"
+                ]
+            },
+            "build-commands": [
+                "cargo build --release",
+                "install -Dm755 target-flatpak/release/Surf /app/bin/Surf",
+                "install -Dm644 packaging/flatpak/com.surfacctg.Surf.desktop /app/share/applications/com.surfacctg.Surf.desktop",
+                "install -Dm644 packaging/flatpak/com.surfacctg.Surf.metainfo.xml /app/share/metainfo/com.surfacctg.Surf.metainfo.xml",
+                "install -Dm644 assets/Surf-icon.svg /app/share/icons/hicolor/scalable/apps/com.surfacctg.Surf.svg"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/ybreakless/Surf",
+                    "tag": "v0.2.0"
+                }
+            ]
+        }
+    ]
+}

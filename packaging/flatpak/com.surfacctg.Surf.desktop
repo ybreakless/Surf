@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Surf Accounting
+GenericName=Accounting & Logistics
+Comment=Local-first invoice, delivery and ledger management
+Exec=Surf
+Icon=com.surfacctg.Surf
+Terminal=false
+Categories=Office;Finance;
+StartupWMClass=Surf
+Keywords=accounting;invoice;delivery;ledger;booking;

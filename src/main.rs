@@ -13,8 +13,13 @@ fn main() -> eframe::Result<()> {
             let db_path = args
                 .get(2)
                 .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("surf_data.db"));
+                .unwrap_or_else(|| {
+                    Surf::services::share::data_dir().join("surf_data.db")
+                });
             if !db_path.exists() {
+                if let Some(parent) = db_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
                 eprintln!("Initializing new Surf database at {}", db_path.display());
             }
             let repo =
@@ -53,8 +58,11 @@ fn main() -> eframe::Result<()> {
         _ => {}
     }
 
-    // Persistent SQLite database file
-    let db_path = PathBuf::from("surf_data.db");
+    // Persistent SQLite database file (XDG data dir, cwd if already present
+    // there, or SURF_DATA_DIR override — see share::data_dir).
+    let data_dir = Surf::services::share::data_dir();
+    let _ = std::fs::create_dir_all(&data_dir);
+    let db_path = data_dir.join("surf_data.db");
     let repo = Repository::new(&db_path).expect("Failed to initialize Surf accounting database");
 
     let options = eframe::NativeOptions {

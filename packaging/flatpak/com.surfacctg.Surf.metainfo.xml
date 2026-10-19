@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.surfacctg.Surf</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-Proprietary</project_license>
+  <name>Surf Accounting</name>
+  <summary>Local-first accounting, invoicing and delivery management</summary>
+  <description>
+    <p>
+      Surf is a local-first accounting and logistics application. It keeps a
+      strict double-entry General Ledger in SQLite on your device (no cloud
+      account required) and produces invoices, delivery orders, estimates and
+      financial reports from a single streamlined desktop UI.
+    </p>
+    <p>Highlights:</p>
+    <ul>
+      <li>Sales invoices with live tax and discount math, PDF/PNG exports</li>
+      <li>Linked Delivery Orders with status tracking and printable slips</li>
+      <li>Vendor bills with accounts-payable posting and payment tracking</li>
+      <li>Product &amp; service catalog linked to GL accounts</li>
+      <li>Recurring invoice templates with weekly/monthly/quarterly/yearly cadence</li>
+      <li>Strict double-entry bookkeeping: every posted document is balanced</li>
+      <li>Financial reports: Profit &amp; Loss, Balance Sheet and Trial Balance</li>
+      <li>Daily FX rate feed (IRR base) via tgju.org</li>
+      <li>Device-to-device sync bundles for offline/LAN use</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.surfacctg.Surf.desktop</launchable>
+  <url type="homepage">https://github.com/ybreakless/Surf</url>
+  <developer_name>ybreakless</developer_name>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.2.0" date="2026-10-19">
+      <description>
+        <p>Purchases &amp; Expenses module: vendor bills, vendor directory and a product/services catalog wired into invoice building; XDG-compliant data directory for sandboxed installs.</p>
+      </description>
+    </release>
+  </releases>
+</component>

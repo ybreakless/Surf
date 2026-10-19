@@ -4,9 +4,39 @@ use uuid::Uuid;
 
 use crate::db::repository::Repository;
 
-/// Where exports live by default: exports/ under the working directory.
+/// Canonical per-user data directory where the SQLite database and exports
+/// live. Resolution order:
+/// 1. `SURF_DATA_DIR` env override
+/// 2. the current directory when it already holds a `surf_data.db`
+///    (keeps pre-existing installs exactly where they are)
+/// 3. `$XDG_DATA_HOME/surf` (Flatpak & desktop environments)
+/// 4. `$HOME/.local/share/surf` fallback
+pub fn data_dir() -> std::path::PathBuf {
+    if let Ok(v) = std::env::var("SURF_DATA_DIR")
+        && !v.trim().is_empty()
+    {
+        return std::path::PathBuf::from(v);
+    }
+    let cwd = std::env::current_dir().unwrap_or_default();
+    if cwd.join("surf_data.db").exists() {
+        return cwd;
+    }
+    if let Ok(x) = std::env::var("XDG_DATA_HOME")
+        && !x.trim().is_empty()
+    {
+        return std::path::PathBuf::from(x).join("surf");
+    }
+    if let Ok(h) = std::env::var("HOME")
+        && !h.trim().is_empty()
+    {
+        return std::path::PathBuf::from(h).join(".local/share/surf");
+    }
+    cwd
+}
+
+/// Where exports live by default: exports/ under the data directory.
 pub fn exports_dir() -> std::path::PathBuf {
-    std::env::current_dir().unwrap_or_default().join("exports")
+    data_dir().join("exports")
 }
 
 /// Strips everything but digits; wa.me links require international digits.
