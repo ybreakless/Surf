@@ -25,13 +25,21 @@ Dirham (AED), Dollar (USD), Euro (EUR), Yuan/RMB (CNY) and Ruble (RUB).
 - **Recurring billing** — templates (weekly/monthly/quarterly/yearly with
   month-end clamping) auto-generate invoices with double-entry posts; missed
   cycles catch up on next run.
+- **Email center** — pick an invoice or delivery order and get a complete,
+  ready-to-edit message in English, Arabic or Persian; mailto: launch or
+  clipboard hand-off.
 - **Automatic tasks** — one engine runs at app start (also "Run All Now"):
   fetches missing FX rates for today, creates a daily DB snapshot in
   `backups/`, bills due recurring templates, scans overdue invoices; every run
   is logged in an audit table.
 - **Device sync (plumbing)** — change-log based sync bundle export/import between devices.
 - **Company profile** — legal name, address, TRN tax id, bank/IBAN details used on exports.
-- **Exports** — invoice to PNG/PDF via a canvas renderer in-core.
+- **Exports & sharing** — invoice PDF/PNG via an in-core canvas renderer,
+  in-app document preview, open-PDF-in-system-viewer, plus one-click sharing:
+  Telegram file delivery through a bot (token configured in Settings) and
+  WhatsApp deep links with ready-made invoice texts (English / العربية / فارسی).
+- **Themes** — dark (default) and light black-&-white mode, toggle in the
+  sidebar, remembered across restarts.
 
 ## Running
 

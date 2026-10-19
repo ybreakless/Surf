@@ -1,5 +1,5 @@
 use chrono::Utc;
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use uuid::Uuid;
 
 use super::theme::Theme;
@@ -104,7 +104,7 @@ pub fn render(
                 .collect();
 
             if filtered.is_empty() {
-                ui.label(RichText::new("No customers found.").color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("No customers found.").color(Theme::text_muted()));
             } else {
                 egui::ScrollArea::vertical()
                     .max_height(480.0)
@@ -112,9 +112,9 @@ pub fn render(
                         for c in filtered {
                             let is_selected = state.id == Some(c.id);
                             let bg_color = if is_selected {
-                                Theme::BG_CARD_LIGHT
+                                Theme::bg_card_light()
                             } else {
-                                Color32::TRANSPARENT
+                                eframe::egui::Color32::TRANSPARENT
                             };
 
                             let frame = egui::Frame::new()
@@ -129,7 +129,7 @@ pub fn render(
                                             ui.label(RichText::new(&c.name).strong());
                                             ui.label(
                                                 RichText::new(format!("[{}]", c.code))
-                                                    .color(Theme::PRIMARY)
+                                                    .color(Theme::primary())
                                                     .size(11.0),
                                             );
                                         });
@@ -139,13 +139,13 @@ pub fn render(
                                                 c.city, c.country, c.postal_zone
                                             ))
                                             .size(12.0)
-                                            .color(Theme::TEXT_MUTED),
+                                            .color(Theme::text_muted()),
                                         );
                                         if !c.postal_code.is_empty() {
                                             ui.label(
                                                 RichText::new(format!("Postal: {}", c.postal_code))
                                                     .size(11.0)
-                                                    .color(Theme::TEXT_MUTED),
+                                                    .color(Theme::text_muted()),
                                             );
                                         }
                                     });
@@ -177,13 +177,13 @@ pub fn render(
             ui.separator();
 
             if let Some(err) = &state.error_msg {
-                ui.label(RichText::new(err).color(Theme::DANGER).strong());
+                ui.label(RichText::new(err).color(Theme::danger()).strong());
                 ui.add_space(4.0);
             }
 
             // Quick Client Templates for rapid creation
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Quick Presets:").size(11.0).color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("Quick Presets:").size(11.0).color(Theme::text_muted()));
                 if ui.small_button("🏪 Local Retail").clicked() {
                     state.city = "Dubai".to_string();
                     state.country = "UAE".to_string();
@@ -284,8 +284,8 @@ pub fn render(
             );
 
             let box_frame = egui::Frame::new()
-                .fill(Color32::from_rgb(22, 28, 40))
-                .stroke(egui::Stroke::new(1.0, Theme::PRIMARY))
+                .fill(Theme::bg_card_light())
+                .stroke(egui::Stroke::new(1.0, Theme::primary()))
                 .corner_radius(egui::CornerRadius::same(6))
                 .inner_margin(egui::Margin::same(12));
 
@@ -293,14 +293,14 @@ pub fn render(
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("⚡ LOGISTICS & NUMBERING LOGIC")
-                            .color(Theme::PRIMARY)
+                            .color(Theme::primary())
                             .strong(),
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
                             RichText::new("Automated Regional Routing")
                                 .size(11.0)
-                                .color(Theme::TEXT_MUTED),
+                                .color(Theme::text_muted()),
                         );
                     });
                 });
@@ -311,7 +311,7 @@ pub fn render(
                         ui.label(RichText::new("Customer Code:").size(12.0));
                         ui.label(
                             RichText::new(&active_code)
-                                .color(Color32::WHITE)
+                                .color(Theme::text_strong())
                                 .strong(),
                         );
                     });
@@ -319,7 +319,7 @@ pub fn render(
                         ui.label(RichText::new("Postal Zone:").size(12.0));
                         ui.label(
                             RichText::new(&active_zone)
-                                .color(Theme::SUCCESS)
+                                .color(Theme::success())
                                 .strong(),
                         );
                     });
@@ -328,7 +328,7 @@ pub fn render(
                         ui.label(RichText::new("Next Invoice:").size(12.0));
                         ui.label(
                             RichText::new(&preview_inv)
-                                .color(Theme::PRIMARY)
+                                .color(Theme::primary())
                                 .strong(),
                         );
                     });
@@ -336,7 +336,7 @@ pub fn render(
                         ui.label(RichText::new("Next Delivery:").size(12.0));
                         ui.label(
                             RichText::new(&preview_do)
-                                .color(Theme::WARNING)
+                                .color(Theme::warning())
                                 .strong(),
                         );
                     });
@@ -348,7 +348,7 @@ pub fn render(
                         "Invoices and Delivery Orders are automatically prefixed with the regional postal zone and customer identifier.",
                     )
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
                 );
             });
 
@@ -362,7 +362,7 @@ pub fn render(
                         } else {
                             "Create Customer"
                         })
-                        .color(Color32::WHITE)
+                        .color(Theme::text_strong())
                         .strong(),
                     )
                     .clicked()

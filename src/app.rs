@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, CornerRadius, RichText};
+use eframe::egui::{self, CornerRadius, RichText};
 use std::time::Instant;
 
 use crate::db::repository::Repository;
@@ -10,8 +10,9 @@ use crate::ui::emails::{self, EmailCenterState};
 use crate::ui::fx::{self, FxState};
 use crate::ui::invoices::{self, InvoiceFormState};
 use crate::ui::ledger;
+use crate::ui::settings::{self, SettingsState};
 use crate::ui::sync_view::{self, SyncViewState};
-use crate::ui::theme::Theme;
+use crate::ui::theme::{Theme, ThemeMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -26,7 +27,73 @@ pub enum Tab {
     Emails,
     CompanyProfile,
     DeviceSync,
+    Settings,
 }
+
+#[derive(Debug, Clone, Copy)]
+struct NavItem {
+    tab: Tab,
+    title: &'static str,
+    icon: &'static str,
+}
+
+const NAV_ITEMS: [NavItem; 11] = [
+    NavItem {
+        tab: Tab::Dashboard,
+        title: "Dashboard",
+        icon: "📊",
+    },
+    NavItem {
+        tab: Tab::Invoices,
+        title: "Invoices",
+        icon: "📄",
+    },
+    NavItem {
+        tab: Tab::Deliveries,
+        title: "Deliveries",
+        icon: "🚚",
+    },
+    NavItem {
+        tab: Tab::Customers,
+        title: "Customers",
+        icon: "👥",
+    },
+    NavItem {
+        tab: Tab::GeneralLedger,
+        title: "General Ledger",
+        icon: "📒",
+    },
+    NavItem {
+        tab: Tab::FxRates,
+        title: "FX Rates",
+        icon: "💱",
+    },
+    NavItem {
+        tab: Tab::Reports,
+        title: "Reports",
+        icon: "📈",
+    },
+    NavItem {
+        tab: Tab::Automations,
+        title: "Automations",
+        icon: "⚙",
+    },
+    NavItem {
+        tab: Tab::Emails,
+        title: "Communications",
+        icon: "✉",
+    },
+    NavItem {
+        tab: Tab::CompanyProfile,
+        title: "Company Profile",
+        icon: "🏢",
+    },
+    NavItem {
+        tab: Tab::DeviceSync,
+        title: "Sync",
+        icon: "🔄",
+    },
+];
 
 pub struct SurfApp {
     repo: Repository,
@@ -37,6 +104,7 @@ pub struct SurfApp {
     sync_state: SyncViewState,
     company_state: CompanyFormState,
     email_state: EmailCenterState,
+    settings_state: SettingsState,
     fx_state: FxState,
     reports_state: crate::ui::reports::ReportsState,
     automations_state: crate::ui::automations::AutomationsState,
@@ -48,6 +116,13 @@ pub struct SurfApp {
 
 impl SurfApp {
     pub fn new(repo: Repository) -> Self {
+        // Restore the remembered theme mode from the database (default: dark).
+        let saved_mode = ThemeMode::from_u8(
+            repo.get_setting("ui_theme")
+                .and_then(|v| v.parse::<u8>().ok())
+                .unwrap_or(0),
+        );
+        Theme::set_mode(saved_mode);
         Self {
             repo,
             active_tab: Tab::Dashboard,
@@ -57,6 +132,7 @@ impl SurfApp {
             sync_state: SyncViewState::default(),
             company_state: CompanyFormState::default(),
             email_state: EmailCenterState::default(),
+            settings_state: SettingsState::default(),
             fx_state: crate::ui::fx::FxState::new(),
             reports_state: crate::ui::reports::ReportsState::default(),
             automations_state: crate::ui::automations::AutomationsState::default(),
@@ -69,94 +145,137 @@ impl SurfApp {
 
 impl eframe::App for SurfApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        // Top Navigation Bar
-        egui::Panel::top("surf_top_bar")
+        self.render_sidebar(ui);
+        self.render_main(ui);
+    }
+}
+
+impl SurfApp {
+    fn toggle_theme(&mut self, ctx: &egui::Context, mode: ThemeMode) {
+        Theme::set_mode(mode);
+        Theme::apply_visuals(ctx);
+        let _ = self.repo.set_setting("ui_theme", &mode.as_u8().to_string());
+    }
+
+    fn render_sidebar(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::left("surf_side_bar")
             .frame(
                 egui::Frame::new()
-                    .fill(Color32::from_rgb(18, 20, 26))
-                    .stroke(egui::Stroke::new(1.0, Color32::from_rgb(38, 42, 54)))
-                    .inner_margin(egui::Margin::symmetric(16, 10)),
+                    .fill(Theme::bg_sidebar())
+                    .stroke(egui::Stroke::new(1.0, Theme::divider()))
+                    .inner_margin(egui::Margin::same(10)),
             )
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    // Logo
-                    ui.heading(
-                        RichText::new("🏄 SURF")
-                            .color(Theme::PRIMARY)
+                ui.vertical(|ui| {
+                    // Brand: plain "Surf" wordmark, no logo icon.
+                    ui.add_space(4.0);
+                    ui.label(
+                        RichText::new("Surf")
+                            .size(26.0)
                             .strong()
-                            .size(19.0),
+                            .color(Theme::text_strong()),
                     );
                     ui.label(
-                        RichText::new("ACCOUNTING")
-                            .color(Color32::WHITE)
-                            .strong()
-                            .size(13.0),
+                        RichText::new("Accounting & Logistics")
+                            .size(11.0)
+                            .color(Theme::text_muted()),
                     );
+                    ui.add_space(12.0);
+                    ui.separator();
+                    ui.add_space(8.0);
 
-                    ui.add_space(20.0);
-
-                    // Navigation Tabs
-                    let tabs = [
-                        (Tab::Dashboard, "📊 Dashboard"),
-                        (Tab::Invoices, "📄 Invoices"),
-                        (Tab::Deliveries, "🚚 Deliveries"),
-                        (Tab::Customers, "👥 Customers"),
-                        (Tab::GeneralLedger, "📒 General Ledger"),
-                        (Tab::FxRates, "💱 FX Rates"),
-                        (Tab::Reports, "📈 Reports"),
-                        (Tab::Automations, "⚙ Automations"),
-                        (Tab::Emails, "✉ Communications"),
-                        (Tab::CompanyProfile, "🏢 Company Profile"),
-                        (Tab::DeviceSync, "🔄 Sync"),
-                    ];
-
-                    for (tab, title) in tabs {
-                        let is_active = self.active_tab == tab;
-                        let text_color = if is_active {
-                            Color32::WHITE
-                        } else {
-                            Theme::TEXT_MUTED
-                        };
-
-                        let btn = ui.add(
-                            egui::Button::new(
-                                RichText::new(title).color(text_color).strong().size(12.5),
-                            )
-                            .fill(if is_active {
-                                Theme::PRIMARY
+                    // Navigation list
+                    ui.spacing_mut().item_spacing.y = 2.0;
+                    for nav in &NAV_ITEMS {
+                        let active = self.active_tab == nav.tab;
+                        let label = RichText::new(format!("{}  {}", nav.icon, nav.title))
+                            .size(13.5)
+                            .color(if active {
+                                Theme::on_primary()
                             } else {
-                                Color32::TRANSPARENT
-                            })
-                            .corner_radius(CornerRadius::same(5)),
+                                Theme::text_muted()
+                            });
+                        let btn = ui.add(
+                            egui::Button::new(label)
+                                .fill(Theme::nav_fill(active))
+                                .corner_radius(CornerRadius::same(6))
+                                .min_size(egui::vec2(ui.available_width(), 26.0)),
                         );
-
                         if btn.clicked() {
-                            self.active_tab = tab;
+                            self.active_tab = nav.tab;
                         }
                     }
+                });
 
-                    // Right side system status
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(
-                            RichText::new(format!("Device: {}", self.repo.device_id))
-                                .size(11.0)
-                                .color(Theme::TEXT_MUTED),
-                        );
-                        ui.label(
-                            RichText::new("● Local-First Engine")
-                                .color(Theme::SUCCESS)
-                                .size(11.0),
-                        );
+                // Bottom status block pinned to the sidebar bottom.
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.add_space(10.0);
+                    ui.separator();
+                    ui.add_space(8.0);
+
+                    // Black & white (light) / dark mode toggle
+                    ui.label(
+                        RichText::new("Appearance")
+                            .size(10.0)
+                            .color(Theme::text_muted()),
+                    );
+                    let is_light = Theme::is_light();
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add(
+                                egui::Button::new(RichText::new("Dark").size(11.5))
+                                    .fill(if is_light {
+                                        Theme::bg_card_light()
+                                    } else {
+                                        Theme::primary()
+                                    })
+                                    .small(),
+                            )
+                            .clicked()
+                        {
+                            self.toggle_theme(ui.ctx(), ThemeMode::Dark);
+                        }
+                        if ui
+                            .add(
+                                egui::Button::new(RichText::new("Light").size(11.5))
+                                    .fill(if is_light {
+                                        Theme::primary()
+                                    } else {
+                                        Theme::bg_card_light()
+                                    })
+                                    .small(),
+                            )
+                            .clicked()
+                        {
+                            self.toggle_theme(ui.ctx(), ThemeMode::Light);
+                        }
                     });
+
+                    ui.add_space(6.0);
+                    ui.label(
+                        RichText::new("● Local-First Engine")
+                            .size(11.0)
+                            .color(Theme::success()),
+                    );
+                    ui.label(
+                        RichText::new(format!(
+                            "Device: {}",
+                            &self.repo.device_id[..8.min(self.repo.device_id.len())]
+                        ))
+                        .size(10.5)
+                        .color(Theme::text_muted()),
+                    );
+                    ui.add_space(2.0);
                 });
             });
+    }
 
-        // Main Content Area
+    fn render_main(&mut self, ui: &mut egui::Ui) {
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
-                    .fill(Color32::from_rgb(22, 24, 30))
-                    .inner_margin(egui::Margin::same(16)),
+                    .fill(Theme::bg_page())
+                    .inner_margin(egui::Margin::same(14)),
             )
             .show(ui, |ui| {
                 // Notification Banner
@@ -165,15 +284,11 @@ impl eframe::App for SurfApp {
                     if time.elapsed().as_secs() > 7 {
                         clear_notif = true;
                     } else {
-                        let banner_bg = if *is_success {
-                            Color32::from_rgb(20, 45, 30)
-                        } else {
-                            Color32::from_rgb(50, 20, 20)
-                        };
+                        let banner_bg = Theme::bg_card_light();
                         let border_color = if *is_success {
-                            Theme::SUCCESS
+                            Theme::success()
                         } else {
-                            Theme::DANGER
+                            Theme::danger()
                         };
 
                         let frame = egui::Frame::new()
@@ -189,7 +304,7 @@ impl eframe::App for SurfApp {
                                         .color(border_color)
                                         .strong(),
                                 );
-                                ui.label(RichText::new(msg).color(Color32::WHITE));
+                                ui.label(RichText::new(msg).color(Theme::text_strong()));
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
@@ -281,6 +396,14 @@ impl eframe::App for SurfApp {
                     Tab::DeviceSync => {
                         sync_view::render(ui, &self.repo, &mut self.sync_state, &mut notif_buffer);
                     }
+                    Tab::Settings => {
+                        settings::render(
+                            ui,
+                            &self.repo,
+                            &mut self.settings_state,
+                            &mut notif_buffer,
+                        );
+                    }
                 }
 
                 // Handle Tab Navigation request from Dashboard or Views
@@ -296,6 +419,7 @@ impl eframe::App for SurfApp {
                         "Emails" => Tab::Emails,
                         "CompanyProfile" => Tab::CompanyProfile,
                         "DeviceSync" => Tab::DeviceSync,
+                        "Settings" => Tab::Settings,
                         _ => Tab::Dashboard,
                     };
                 }

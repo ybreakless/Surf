@@ -33,7 +33,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, state: &mut ReportsState) {
         ui.label(
             RichText::new("Premium accounting reports computed live from your local ledger.")
                 .size(11.0)
-                .color(Theme::TEXT_MUTED),
+                .color(Theme::text_muted()),
         );
         ui.separator();
 
@@ -61,7 +61,7 @@ fn view_button(ui: &mut egui::Ui, state: &mut ReportsState, view: ReportView, la
         .add(
             egui::Button::new(RichText::new(label).strong().size(12.5))
                 .fill(if state.view == view {
-                    Theme::PRIMARY
+                    Theme::primary()
                 } else {
                     Color32::TRANSPARENT
                 })
@@ -93,19 +93,19 @@ fn overview(
             &mut cols[0],
             "Revenue (Credits)",
             &amount(base, is.revenue),
-            Theme::SUCCESS,
+            Theme::success(),
         );
         metric_card(
             &mut cols[1],
             "Expenses",
             &amount(base, is.expenses),
-            Theme::DANGER,
+            Theme::danger(),
         );
         metric_card(
             &mut cols[2],
             "Net Income",
             &amount(base, is.net_income),
-            Theme::PRIMARY,
+            Theme::primary(),
         );
     });
     ui.add_space(8.0);
@@ -114,19 +114,19 @@ fn overview(
             &mut cols[0],
             "Assets",
             &amount(base, bs.assets),
-            Theme::PRIMARY,
+            Theme::primary(),
         );
         metric_card(
             &mut cols[1],
             "Liabilities",
             &amount(base, bs.liabilities),
-            Theme::WARNING,
+            Theme::warning(),
         );
         metric_card(
             &mut cols[2],
             "Debits = Credits",
             &format!("{d} \u{2714} {c}"),
-            Theme::SUCCESS,
+            Theme::success(),
         );
     });
     ui.add_space(8.0);
@@ -145,13 +145,13 @@ fn overview(
             &mut cols[0],
             "Open Receivables",
             &amount(base, outstanding),
-            Theme::DANGER,
+            Theme::danger(),
         );
         metric_card(
             &mut cols[1],
             "Past-Due Receivables",
             &amount(base, overdue),
-            Theme::DANGER,
+            Theme::danger(),
         );
     });
     ui.add_space(12.0);
@@ -160,20 +160,20 @@ fn overview(
             "Pick a detailed report above. Values are computed live from the double-entry ledger (base currency shown once set).",
         )
         .size(11.0)
-        .color(Theme::TEXT_MUTED),
+        .color(Theme::text_muted()),
     );
 }
 
 fn metric_card(ui: &mut egui::Ui, title: &str, value: &str, color: Color32) {
     egui::Frame::new()
-        .fill(Theme::BG_CARD_LIGHT)
+        .fill(Theme::bg_card_light())
         .corner_radius(egui::CornerRadius::same(6))
         .inner_margin(egui::Margin::symmetric(10, 6))
         .show(ui, |ui| {
             ui.label(
                 RichText::new(title)
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED)
+                    .color(Theme::text_muted())
                     .strong(),
             );
             ui.label(RichText::new(value).size(18.0).color(color).strong());
@@ -215,13 +215,13 @@ fn trial_balance(ui: &mut egui::Ui, accounts: &[crate::core::model::Account], ba
     if d == c {
         ui.label(
             RichText::new("\u{2714} Trial balance is balanced.")
-                .color(Theme::SUCCESS)
+                .color(Theme::success())
                 .strong(),
         );
     } else {
         ui.label(
             RichText::new(format!("\u{26A0} Unbalanced by {}", amount(base, d - c)))
-                .color(Theme::DANGER)
+                .color(Theme::danger())
                 .strong(),
         );
     }
@@ -234,20 +234,20 @@ fn income_statement(ui: &mut egui::Ui, accounts: &[crate::core::model::Account],
         ui,
         "Revenue (credit-normal accounts)",
         &amount(base, is.revenue),
-        Theme::SUCCESS,
+        Theme::success(),
     );
     report_row(
         ui,
         "Expenses (debit-normal accounts)",
         &amount(base, is.expenses),
-        Theme::DANGER,
+        Theme::danger(),
     );
     ui.separator();
     report_row(
         ui,
         "Net Income",
         &amount(base, is.net_income),
-        Theme::PRIMARY,
+        Theme::primary(),
     );
     ui.add_space(4.0);
     ui.label(
@@ -255,26 +255,26 @@ fn income_statement(ui: &mut egui::Ui, accounts: &[crate::core::model::Account],
             "Ledger basis: accrual. Net income flows into equity on the Balance Sheet. Ledger base currency: {base}"
         ))
         .size(11.0)
-        .color(Theme::TEXT_MUTED),
+        .color(Theme::text_muted()),
     );
 }
 
 fn balance_sheet(ui: &mut egui::Ui, accounts: &[crate::core::model::Account], base: &str) {
     let bs = reports::balance_sheet(accounts);
     ui.separator();
-    report_row(ui, "Assets", &amount(base, bs.assets), Theme::PRIMARY);
+    report_row(ui, "Assets", &amount(base, bs.assets), Theme::primary());
     report_row(
         ui,
         "Liabilities",
         &amount(base, bs.liabilities),
-        Theme::WARNING,
+        Theme::warning(),
     );
-    report_row(ui, "Equity", &amount(base, bs.equity), Color32::WHITE);
+    report_row(ui, "Equity", &amount(base, bs.equity), Theme::text_strong());
     report_row(
         ui,
         "Current Net Income",
         &amount(base, bs.net_income),
-        Theme::SUCCESS,
+        Theme::success(),
     );
     ui.separator();
     let total = bs.liabilities + bs.equity + bs.net_income;
@@ -282,7 +282,7 @@ fn balance_sheet(ui: &mut egui::Ui, accounts: &[crate::core::model::Account], ba
         ui,
         "Total Liabilities + Equity",
         &amount(base, total),
-        Theme::PRIMARY,
+        Theme::primary(),
     );
 }
 
@@ -291,7 +291,7 @@ fn aging(ui: &mut egui::Ui, invoices: &[crate::core::model::Invoice]) {
     let rows = reports::aged_receivables(invoices, today);
     ui.separator();
     if rows.is_empty() {
-        ui.label(RichText::new("\u{2714} No outstanding receivables.").color(Theme::SUCCESS));
+        ui.label(RichText::new("\u{2714} No outstanding receivables.").color(Theme::success()));
         return;
     }
     egui::Grid::new("aging_grid")
@@ -322,12 +322,12 @@ fn aging(ui: &mut egui::Ui, invoices: &[crate::core::model::Invoice]) {
 }
 
 fn header_cell(ui: &mut egui::Ui, text: &str) {
-    ui.label(RichText::new(text).strong().color(Theme::TEXT_MUTED));
+    ui.label(RichText::new(text).strong().color(Theme::text_muted()));
 }
 
 fn amount_cell(ui: &mut egui::Ui, base: &str, value: Decimal) {
     if value == Decimal::ZERO {
-        ui.label(RichText::new("\u{2013}").color(Theme::TEXT_MUTED));
+        ui.label(RichText::new("\u{2013}").color(Theme::text_muted()));
     } else {
         ui.label(RichText::new(amount(base, value)).strong());
     }
@@ -335,7 +335,7 @@ fn amount_cell(ui: &mut egui::Ui, base: &str, value: Decimal) {
 
 fn bucket_cell(ui: &mut egui::Ui, currency: String, value: Decimal) {
     if value == Decimal::ZERO {
-        ui.label(RichText::new("\u{2013}").color(Theme::TEXT_MUTED));
+        ui.label(RichText::new("\u{2013}").color(Theme::text_muted()));
     } else {
         ui.label(RichText::new(amount(&currency, value)).strong());
     }

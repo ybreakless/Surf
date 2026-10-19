@@ -8,5 +8,6 @@ pub mod fx;
 pub mod invoices;
 pub mod ledger;
 pub mod reports;
+pub mod settings;
 pub mod sync_view;
 pub mod theme;

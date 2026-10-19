@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use std::time::Duration;
@@ -80,7 +80,7 @@ pub fn render(
                 }
             }
         } else {
-            ui.label(RichText::new("Updating rates from tgju.org...").color(Theme::PRIMARY));
+            ui.label(RichText::new("Updating rates from tgju.org...").color(Theme::primary()));
             ui.ctx().request_repaint_after(Duration::from_millis(250));
         }
     }
@@ -93,17 +93,13 @@ pub fn render(
     });
 
     let banner = egui::Frame::new()
-        .fill(if all_fresh {
-            Color32::from_rgb(20, 45, 30)
-        } else {
-            Color32::from_rgb(45, 35, 20)
-        })
+        .fill(Theme::bg_card_light())
         .stroke(egui::Stroke::new(
             1.0,
             if all_fresh {
-                Theme::SUCCESS
+                Theme::success()
             } else {
-                Theme::WARNING
+                Theme::warning()
             },
         ))
         .corner_radius(egui::CornerRadius::same(6))
@@ -114,18 +110,18 @@ pub fn render(
             let status = if all_fresh { "FX DATA CURRENT" } else { "FX DATA MISSING OR STALE" };
             ui.label(
                 RichText::new(status)
-                    .color(if all_fresh { Theme::SUCCESS } else { Theme::WARNING })
+                    .color(if all_fresh { Theme::success() } else { Theme::warning() })
                     .strong(),
             );
             ui.label(
                 RichText::new("Rates are stored as IRR per 1 unit of foreign currency (free-market source: tgju.org).")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let running = state.update_running.is_some();
                 let btn = egui::Button::new(
-                    RichText::new("Update from tgju").color(Color32::WHITE).strong(),
+                    RichText::new("Update from tgju").color(Theme::text_strong()).strong(),
                 );
                 if ui.add_enabled(!running, btn).clicked() {
                     state.update_running =
@@ -164,7 +160,7 @@ pub fn render(
                             ui.label(RichText::new(c.code()).strong());
                             ui.label(c.label());
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                ui.label(RichText::new("Base").size(11.0).color(Theme::PRIMARY));
+                                ui.label(RichText::new("Base").size(11.0).color(Theme::primary()));
                             });
                         });
                         ui.separator();
@@ -172,13 +168,13 @@ pub fn render(
                     }
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(c.code()).strong());
-                        ui.label(RichText::new(c.label()).size(11.0).color(Theme::TEXT_MUTED));
+                        ui.label(RichText::new(c.label()).size(11.0).color(Theme::text_muted()));
                         match latest.iter().find(|r| r.quote == c) {
                             Some(r) => {
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                     let (color, age_label) = match r.fetched_at {
-                                        Some(t) if chrono::Utc::now().signed_duration_since(t).num_hours() < 30 => (Theme::SUCCESS, "fresh"),
-                                        _ => (Theme::WARNING, "stale"),
+                                        Some(t) if chrono::Utc::now().signed_duration_since(t).num_hours() < 30 => (Theme::success(), "fresh"),
+                                        _ => (Theme::warning(), "stale"),
                                     };
                                     ui.label(RichText::new(age_label).size(11.0).color(color));
                                     ui.label(
@@ -187,7 +183,7 @@ pub fn render(
                                     ui.label(
                                         RichText::new(r.as_of_date.to_string())
                                             .size(11.0)
-                                            .color(Theme::TEXT_MUTED),
+                                            .color(Theme::text_muted()),
                                     );
                                     ui.label(
                                         RichText::new(match r.source {
@@ -196,13 +192,13 @@ pub fn render(
                                             RateSource::Import => "import",
                                         })
                                         .size(11.0)
-                                        .color(Theme::PRIMARY),
+                                        .color(Theme::primary()),
                                     );
                                 });
                             }
                             None => {
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    ui.label(RichText::new("No rate yet").color(Theme::DANGER).size(11.0));
+                                    ui.label(RichText::new("No rate yet").color(Theme::danger()).size(11.0));
                                 });
                             }
                         }
@@ -220,7 +216,7 @@ pub fn render(
                 ui.label(
                     RichText::new("Manual rates override fetched data for their date. Enter how many IRR one unit of the currency is worth.")
                         .size(11.0)
-                        .color(Theme::TEXT_MUTED),
+                        .color(Theme::text_muted()),
                 );
 
                 egui::Grid::new("fx_manual_grid")
@@ -250,7 +246,7 @@ pub fn render(
                     });
 
                 ui.add_space(8.0);
-                if ui.button(RichText::new("Save Manual Rate").color(Color32::WHITE).strong()).clicked() {
+                if ui.button(RichText::new("Save Manual Rate").color(Theme::text_strong()).strong()).clicked() {
                     match (parse_rate_str(&state.manual_rate), chrono::NaiveDate::parse_from_str(&state.manual_date, "%Y-%m-%d")) {
                         (Some(rate), Ok(date)) => {
                             let fx = FxRate {
@@ -308,7 +304,7 @@ pub fn render(
                 match convert(amount, state.conv_from, state.conv_to, &rates) {
                     Some(result) => {
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new(format_money_by_code(state.conv_to.code(), result)).strong().size(18.0).color(Theme::PRIMARY));
+                            ui.label(RichText::new(format_money_by_code(state.conv_to.code(), result)).strong().size(18.0).color(Theme::primary()));
                         });
                         if state.conv_from == Currency::IRR || state.conv_to == Currency::IRR {
                             ui.label(
@@ -318,12 +314,12 @@ pub fn render(
                                     format_toman(if state.conv_to == Currency::IRR { result } else { amount }, false)
                                 ))
                                 .size(11.0)
-                                .color(Theme::TEXT_MUTED),
+                                .color(Theme::text_muted()),
                             );
                         }
                     }
                     None => {
-                        ui.label(RichText::new("Add a rate for the target currency first.").color(Theme::DANGER));
+                        ui.label(RichText::new("Add a rate for the target currency first.").color(Theme::danger()));
                     }
                 }
             });
@@ -339,7 +335,7 @@ pub fn render(
             ui.label(
                 RichText::new(format!("{} records stored", rates.len()))
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         });
         ui.separator();
@@ -356,7 +352,7 @@ pub fn render(
                         ui.label(
                             RichText::new(format!("as of {}", r.as_of_date))
                                 .size(11.0)
-                                .color(Theme::TEXT_MUTED),
+                                .color(Theme::text_muted()),
                         );
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label(
@@ -366,7 +362,7 @@ pub fn render(
                                     RateSource::Import => "import",
                                 })
                                 .size(11.0)
-                                .color(Theme::PRIMARY),
+                                .color(Theme::primary()),
                             );
                             ui.label(
                                 RichText::new(
@@ -375,7 +371,7 @@ pub fn render(
                                         .unwrap_or_default(),
                                 )
                                 .size(11.0)
-                                .color(Theme::TEXT_MUTED),
+                                .color(Theme::text_muted()),
                             );
                         });
                     });

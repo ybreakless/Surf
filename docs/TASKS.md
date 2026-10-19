@@ -51,6 +51,31 @@ Status key: [x] done · [~] partially wired · [ ] pending
 - [ ] Order pipeline integration: shop/order sync, webhooks, Open API endpoints
 - [ ] Email sending (SMTP config + templates), attachments, statement scheduling
 
+## M6 — Messaging, intake & delivery app polish (upcoming)
+
+- [~] Dark / light (black & white) theme toggle — done; persist via `ui_theme` setting
+- [~] Sidebar navigation shell — done; standard app-like IA
+- [~] Invoice document flows — done: in-app preview, open PDF, export PNG/PDF,
+      WhatsApp deep link share, Telegram bot `sendDocument` (background worker)
+- [~] Multi-language ready texts (English / العربية / فارسی) for invoice &
+      shipping messages — done in `core/templates.rs`; extend language set
+- [ ] Email "himalaya-style" integration: connect the business mailbox
+      (IMAP/SMTP accounts), read/send from inside Surf, pull replies into the
+      customer timeline, and hand drafts to an email MCP server so AI agents
+      can compose/mutate messages; per-template signatures for the account
+- [ ] Telegram outbound polish: per-chat directories (customers ↔ chat ids),
+      delivery-order documents + receipts, delivery confirmation callbacks,
+      send failures surfaced in Automations log
+- [ ] WhatsApp Business Cloud API (real file send, no manual attach) guarded
+      behind settings + credentials
+- [ ] Self-hosted website (single static page + tiny backend run by Surf or a
+      separate binary): customer intake form (contact details, TRN, address,
+      preferred currency & language) writing straight into the Surf SQLite
+      schema; review/approve flow inside the Customers tab before activation;
+      first-party-hosting only, no third-party service
+- [ ] PDF render fidelity: embedded Persian/Arabic fonts for the printed
+      invoice (current PDF uses Helvetica; RTL totals/labels pending)
+
 ## M5 — Hardening & sync
 
 - [ ] Atomic posting rewrite (`BEGIN IMMEDIATE` around JE + balances)

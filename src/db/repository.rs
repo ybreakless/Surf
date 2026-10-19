@@ -243,6 +243,27 @@ impl Repository {
 
     // --- Company Settings ---
 
+    /// Generic key-value setting read; returns None when unset.
+    pub fn get_setting(&self, key: &str) -> Option<String> {
+        self.conn
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = ?1",
+                params![key],
+                |r| r.get::<_, String>(0),
+            )
+            .ok()
+    }
+
+    /// Generic key-value setting write (upsert).
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
     pub fn get_base_currency(&self) -> String {
         self.conn
             .query_row(

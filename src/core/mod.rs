@@ -6,3 +6,4 @@ pub mod money;
 pub mod numbering;
 pub mod reports;
 pub mod sync;
+pub mod templates;

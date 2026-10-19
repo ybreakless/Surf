@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
+use eframe::egui::{self, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 
@@ -68,20 +68,20 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.label(
                 RichText::new("MONEY IN (INFLOW)")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED)
+                    .color(Theme::text_muted())
                     .strong(),
             );
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!("+${:.2}", total_money_in))
                     .size(22.0)
-                    .color(Theme::SUCCESS)
+                    .color(Theme::success())
                     .strong(),
             );
             ui.label(
                 RichText::new(format!("Collected: ${:.2}", cash_collected))
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         });
 
@@ -90,14 +90,14 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.label(
                 RichText::new("MONEY OUT (OUTFLOW)")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED)
+                    .color(Theme::text_muted())
                     .strong(),
             );
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!("-${:.2}", total_money_out))
                     .size(22.0)
-                    .color(Theme::DANGER)
+                    .color(Theme::danger())
                     .strong(),
             );
             ui.label(
@@ -106,7 +106,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
                     total_expenses, tax_payable
                 ))
                 .size(11.0)
-                .color(Theme::TEXT_MUTED),
+                .color(Theme::text_muted()),
             );
         });
 
@@ -115,14 +115,14 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.label(
                 RichText::new("NET CASH POSITION")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED)
+                    .color(Theme::text_muted())
                     .strong(),
             );
             ui.add_space(4.0);
             let color = if net_cash_flow >= Decimal::ZERO {
-                Theme::PRIMARY
+                Theme::primary()
             } else {
-                Theme::WARNING
+                Theme::warning()
             };
             ui.label(
                 RichText::new(format!("${:.2}", net_cash_flow))
@@ -133,7 +133,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.label(
                 RichText::new(format!("Liquid Cash: ${:.2}", cash_balance))
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         });
 
@@ -142,20 +142,20 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.label(
                 RichText::new("ACTIVE SHIPMENTS")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED)
+                    .color(Theme::text_muted())
                     .strong(),
             );
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!("{}", pending_deliveries_count))
                     .size(22.0)
-                    .color(Theme::WARNING)
+                    .color(Theme::warning())
                     .strong(),
             );
             ui.label(
                 RichText::new("Awaiting Delivery")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         });
     });
@@ -167,9 +167,9 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
         ui.horizontal(|ui| {
             ui.heading("📈 Cash Flow Systems: Money In vs. Money Out");
             ui.add_space(16.0);
-            ui.label(RichText::new("■ Money In (Revenue)").color(Theme::SUCCESS));
-            ui.label(RichText::new("■ Money Out (Expenses & Tax)").color(Theme::DANGER));
-            ui.label(RichText::new("― Net Cash Trajectory").color(Theme::PRIMARY));
+            ui.label(RichText::new("■ Money In (Revenue)").color(Theme::success()));
+            ui.label(RichText::new("■ Money Out (Expenses & Tax)").color(Theme::danger()));
+            ui.label(RichText::new("― Net Cash Trajectory").color(Theme::primary()));
         });
         ui.separator();
 
@@ -206,31 +206,31 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
         ui.heading("Quick Navigation");
         ui.add_space(16.0);
         if ui
-            .button(RichText::new("+ Create Invoice").color(Color32::WHITE))
+            .button(RichText::new("+ Create Invoice").color(Theme::text_strong()))
             .clicked()
         {
             *nav_to_tab = Some("Invoices");
         }
         if ui
-            .button(RichText::new("+ New Delivery Order").color(Color32::WHITE))
+            .button(RichText::new("+ New Delivery Order").color(Theme::text_strong()))
             .clicked()
         {
             *nav_to_tab = Some("Deliveries");
         }
         if ui
-            .button(RichText::new("+ Add Customer").color(Color32::WHITE))
+            .button(RichText::new("+ Add Customer").color(Theme::text_strong()))
             .clicked()
         {
             *nav_to_tab = Some("Customers");
         }
         if ui
-            .button(RichText::new("✉ Communications & Dispatch").color(Theme::PRIMARY))
+            .button(RichText::new("✉ Communications & Dispatch").color(Theme::primary()))
             .clicked()
         {
             *nav_to_tab = Some("Emails");
         }
         if ui
-            .button(RichText::new("🏢 Company Profile & Stamp").color(Color32::WHITE))
+            .button(RichText::new("🏢 Company Profile & Stamp").color(Theme::text_strong()))
             .clicked()
         {
             *nav_to_tab = Some("CompanyProfile");
@@ -254,7 +254,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.separator();
 
             if invoices.is_empty() {
-                ui.label(RichText::new("No invoices created yet.").color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("No invoices created yet.").color(Theme::text_muted()));
             } else {
                 for inv in invoices.iter().take(5) {
                     ui.horizontal(|ui| {
@@ -262,15 +262,15 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
                         ui.label(
                             RichText::new(format!("({})", inv.postal_zone))
                                 .size(11.0)
-                                .color(Theme::TEXT_MUTED),
+                                .color(Theme::text_muted()),
                         );
-                        ui.label(RichText::new(&inv.customer_name).color(Color32::LIGHT_GRAY));
+                        ui.label(RichText::new(&inv.customer_name).color(Theme::text_muted()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let badge_color = match inv.status {
-                                InvoiceStatus::Paid => Theme::SUCCESS,
-                                InvoiceStatus::Sent => Theme::PRIMARY,
-                                InvoiceStatus::Draft => Theme::TEXT_MUTED,
-                                InvoiceStatus::Cancelled => Theme::DANGER,
+                                InvoiceStatus::Paid => Theme::success(),
+                                InvoiceStatus::Sent => Theme::primary(),
+                                InvoiceStatus::Draft => Theme::text_muted(),
+                                InvoiceStatus::Cancelled => Theme::danger(),
                             };
                             Theme::status_badge(ui, inv.status.as_str(), badge_color);
                             ui.label(RichText::new(format!("${:.2}", inv.total_amount)).strong());
@@ -294,7 +294,9 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
             ui.separator();
 
             if deliveries.is_empty() {
-                ui.label(RichText::new("No delivery orders created yet.").color(Theme::TEXT_MUTED));
+                ui.label(
+                    RichText::new("No delivery orders created yet.").color(Theme::text_muted()),
+                );
             } else {
                 for d in deliveries.iter().take(5) {
                     ui.horizontal(|ui| {
@@ -302,15 +304,15 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository, nav_to_tab: &mut Option<&'st
                         ui.label(
                             RichText::new(format!("Zone: {}", d.postal_zone))
                                 .size(11.0)
-                                .color(Theme::PRIMARY),
+                                .color(Theme::primary()),
                         );
-                        ui.label(RichText::new(&d.customer_name).color(Color32::LIGHT_GRAY));
+                        ui.label(RichText::new(&d.customer_name).color(Theme::text_muted()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let badge_color = match d.status {
-                                DeliveryStatus::Delivered => Theme::SUCCESS,
-                                DeliveryStatus::InTransit => Theme::WARNING,
-                                DeliveryStatus::Pending => Theme::PRIMARY,
-                                DeliveryStatus::Cancelled => Theme::DANGER,
+                                DeliveryStatus::Delivered => Theme::success(),
+                                DeliveryStatus::InTransit => Theme::warning(),
+                                DeliveryStatus::Pending => Theme::primary(),
+                                DeliveryStatus::Cancelled => Theme::danger(),
                             };
                             Theme::status_badge(ui, d.status.as_str(), badge_color);
                         });
@@ -329,11 +331,11 @@ fn render_bar_chart(ui: &mut egui::Ui, current_in: f64, current_out: f64) {
     let rect = response.rect;
 
     // Background chart card
-    painter.rect_filled(rect, CornerRadius::same(6), Color32::from_rgb(22, 25, 32));
+    painter.rect_filled(rect, CornerRadius::same(6), Theme::bg_card());
     painter.rect_stroke(
         rect,
         CornerRadius::same(6),
-        Stroke::new(1.0, Color32::from_rgb(38, 42, 54)),
+        Stroke::new(1.0, Theme::divider()),
         egui::StrokeKind::Inside,
     );
 
@@ -355,7 +357,7 @@ fn render_bar_chart(ui: &mut egui::Ui, current_in: f64, current_out: f64) {
             Pos2::new(rect.left() + 10.0, chart_bottom),
             Pos2::new(rect.right() - 10.0, chart_bottom),
         ],
-        Stroke::new(1.0, Color32::from_rgb(55, 60, 75)),
+        Stroke::new(1.0, Theme::divider()),
     );
 
     for (i, m) in months.iter().enumerate() {
@@ -369,14 +371,14 @@ fn render_bar_chart(ui: &mut egui::Ui, current_in: f64, current_out: f64) {
             Pos2::new(center_x - bar_width - 2.0, chart_bottom - in_h),
             Pos2::new(center_x - 2.0, chart_bottom),
         );
-        painter.rect_filled(in_rect, CornerRadius::same(3), Theme::SUCCESS);
+        painter.rect_filled(in_rect, CornerRadius::same(3), Theme::success());
 
         // Red Money Out Bar
         let out_rect = Rect::from_min_max(
             Pos2::new(center_x + 2.0, chart_bottom - out_h),
             Pos2::new(center_x + bar_width + 2.0, chart_bottom),
         );
-        painter.rect_filled(out_rect, CornerRadius::same(3), Theme::DANGER);
+        painter.rect_filled(out_rect, CornerRadius::same(3), Theme::danger());
 
         // Month label
         let font_id = egui::TextStyle::Small.resolve(ui.style());
@@ -385,7 +387,7 @@ fn render_bar_chart(ui: &mut egui::Ui, current_in: f64, current_out: f64) {
             egui::Align2::CENTER_CENTER,
             m,
             font_id,
-            Theme::TEXT_MUTED,
+            Theme::text_muted(),
         );
     }
 }
@@ -397,11 +399,11 @@ fn render_trajectory_chart(ui: &mut egui::Ui, net_cash: f64) {
     let rect = response.rect;
 
     // Background chart card
-    painter.rect_filled(rect, CornerRadius::same(6), Color32::from_rgb(22, 25, 32));
+    painter.rect_filled(rect, CornerRadius::same(6), Theme::bg_card());
     painter.rect_stroke(
         rect,
         CornerRadius::same(6),
-        Stroke::new(1.0, Color32::from_rgb(38, 42, 54)),
+        Stroke::new(1.0, Theme::divider()),
         egui::StrokeKind::Inside,
     );
 
@@ -426,18 +428,18 @@ fn render_trajectory_chart(ui: &mut egui::Ui, net_cash: f64) {
             Pos2::new(rect.left() + 10.0, chart_bottom),
             Pos2::new(rect.right() - 10.0, chart_bottom),
         ],
-        Stroke::new(1.0, Color32::from_rgb(55, 60, 75)),
+        Stroke::new(1.0, Theme::divider()),
     );
 
     // Draw Line Segments
     for w in coords.windows(2) {
-        painter.line_segment([w[0], w[1]], Stroke::new(3.0, Theme::PRIMARY));
+        painter.line_segment([w[0], w[1]], Stroke::new(3.0, Theme::primary()));
     }
 
     // Draw Glowing Node Circles
     for pt in &coords {
-        painter.circle_filled(*pt, 5.0, Theme::PRIMARY);
-        painter.circle_filled(*pt, 2.5, Color32::WHITE);
+        painter.circle_filled(*pt, 5.0, Theme::primary());
+        painter.circle_filled(*pt, 2.5, Theme::text_strong());
     }
 
     // Trajectory Status Tag
@@ -448,6 +450,6 @@ fn render_trajectory_chart(ui: &mut egui::Ui, net_cash: f64) {
         egui::Align2::RIGHT_TOP,
         status_text,
         font_id,
-        Theme::SUCCESS,
+        Theme::success(),
     );
 }

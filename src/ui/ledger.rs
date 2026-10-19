@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use rust_decimal::Decimal;
 
 use super::theme::Theme;
@@ -26,17 +26,13 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
 
     // Header banner with double-entry integrity check
     let banner_frame = egui::Frame::new()
-        .fill(if is_balanced {
-            Color32::from_rgb(20, 35, 25)
-        } else {
-            Color32::from_rgb(45, 20, 20)
-        })
+        .fill(Theme::bg_card_light())
         .stroke(egui::Stroke::new(
             1.0,
             if is_balanced {
-                Theme::SUCCESS
+                Theme::success()
             } else {
-                Theme::DANGER
+                Theme::danger()
             },
         ))
         .corner_radius(egui::CornerRadius::same(6))
@@ -47,17 +43,17 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
             if is_balanced {
                 ui.label(
                     RichText::new("✓ DOUBLE-ENTRY INTEGRITY VERIFIED")
-                        .color(Theme::SUCCESS)
+                        .color(Theme::success())
                         .strong(),
                 );
                 ui.label(
                     RichText::new("Debits equal Credits across all postings.")
-                        .color(Color32::LIGHT_GRAY),
+                        .color(Theme::text_muted()),
                 );
             } else {
                 ui.label(
                     RichText::new("⚠ LEDGER IMBALANCE DETECTED")
-                        .color(Theme::DANGER)
+                        .color(Theme::danger())
                         .strong(),
                 );
             }
@@ -73,7 +69,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
                     ))
                     .strong(),
                 );
-                ui.label(RichText::new(" | ").color(Theme::TEXT_MUTED));
+                ui.label(RichText::new(" | ").color(Theme::text_muted()));
                 ui.label(
                     RichText::new(format!(
                         "Total Debits: {}",
@@ -117,11 +113,11 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
                             ui.label(&acc.name);
 
                             let type_color = match acc.account_type {
-                                AccountType::Asset => Theme::PRIMARY,
-                                AccountType::Liability => Theme::WARNING,
-                                AccountType::Equity => Color32::LIGHT_BLUE,
-                                AccountType::Revenue => Theme::SUCCESS,
-                                AccountType::Expense => Color32::from_rgb(220, 120, 120),
+                                AccountType::Asset => Theme::primary(),
+                                AccountType::Liability => Theme::warning(),
+                                AccountType::Equity => Theme::primary().gamma_multiply(0.75),
+                                AccountType::Revenue => Theme::success(),
+                                AccountType::Expense => Theme::danger(),
                             };
                             ui.label(
                                 RichText::new(format!("{:?}", acc.account_type))
@@ -153,7 +149,9 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
             ui.separator();
 
             if journal_entries.is_empty() {
-                ui.label(RichText::new("No journal entries posted yet.").color(Theme::TEXT_MUTED));
+                ui.label(
+                    RichText::new("No journal entries posted yet.").color(Theme::text_muted()),
+                );
                 return;
             }
 
@@ -167,14 +165,14 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
                             if let Some(ref_no) = &je.reference {
                                 ui.label(
                                     RichText::new(format!("Ref: {}", ref_no))
-                                        .color(Theme::PRIMARY)
+                                        .color(Theme::primary())
                                         .size(11.0),
                                 );
                             }
                         });
                         ui.label(
                             RichText::new(&je.memo)
-                                .color(Color32::LIGHT_GRAY)
+                                .color(Theme::text_muted())
                                 .size(12.0),
                         );
 
@@ -201,7 +199,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
                                                         line.credit
                                                     )
                                                 ))
-                                                .color(Theme::WARNING)
+                                                .color(Theme::warning())
                                                 .size(11.0),
                                             );
                                         }
@@ -214,7 +212,7 @@ pub fn render(ui: &mut egui::Ui, repo: &Repository) {
                                                         line.debit
                                                     )
                                                 ))
-                                                .color(Theme::SUCCESS)
+                                                .color(Theme::success())
                                                 .size(11.0),
                                             );
                                         }

@@ -1,4 +1,4 @@
-use eframe::egui::{self, ViewportBuilder};
+use eframe::egui::ViewportBuilder;
 use std::path::PathBuf;
 
 use Surf::app::SurfApp;
@@ -60,8 +60,8 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_title("Surf - Professional Accounting & Logistics")
-            .with_inner_size([1280.0, 780.0])
-            .with_min_inner_size([980.0, 600.0]),
+            .with_inner_size([1440.0, 900.0])
+            .with_min_inner_size([1080.0, 640.0]),
         ..Default::default()
     };
 
@@ -69,9 +69,18 @@ fn main() -> eframe::Result<()> {
         "Surf Accounting",
         options,
         Box::new(|cc| {
-            // Apply sleek dark theme visuals
-            cc.egui_ctx.set_visuals(egui::Visuals::dark());
-            Ok(Box::new(SurfApp::new(repo)))
+            // SurfApp::new restores the remembered dark/light theme from the DB.
+            let app = SurfApp::new(repo);
+            // Apply the selected theme's complete egui visuals before first frame.
+            let mode = Surf::ui::theme::Theme::mode();
+            let visuals_seed = if mode.as_u8() == 1 {
+                eframe::egui::Visuals::light()
+            } else {
+                eframe::egui::Visuals::dark()
+            };
+            cc.egui_ctx.set_visuals(visuals_seed);
+            Surf::ui::theme::Theme::apply_visuals(&cc.egui_ctx);
+            Ok(Box::new(app))
         }),
     )
 }

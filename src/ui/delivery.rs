@@ -1,5 +1,5 @@
 use chrono::{NaiveDate, Utc};
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -80,7 +80,7 @@ fn render_delivery_list(
         ui.horizontal(|ui| {
             ui.heading("Delivery Orders & Logistics");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button(RichText::new("+ New Delivery Order").color(Color32::WHITE).strong()).clicked() {
+                if ui.button(RichText::new("+ New Delivery Order").color(Theme::text_strong()).strong()).clicked() {
                     *state = DeliveryFormState::default();
                     state.is_open = true;
                     if let Some(first_cust) = customers.first() {
@@ -97,7 +97,7 @@ fn render_delivery_list(
         if deliveries.is_empty() {
             ui.add_space(16.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new("No delivery orders created yet.").color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("No delivery orders created yet.").color(Theme::text_muted()));
                 ui.label("Generate delivery orders directly from Invoices or click '+ New Delivery Order'.");
             });
             ui.add_space(16.0);
@@ -124,16 +124,16 @@ fn render_delivery_list(
             for d in deliveries {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(&d.delivery_number).strong());
-                    ui.label(RichText::new(format!("[{}]", d.postal_zone)).color(Theme::PRIMARY).size(12.0));
+                    ui.label(RichText::new(format!("[{}]", d.postal_zone)).color(Theme::primary()).size(12.0));
                     ui.label(&d.customer_name);
-                    ui.label(RichText::new(&d.delivery_address).color(Color32::LIGHT_GRAY));
+                    ui.label(RichText::new(&d.delivery_address).color(Theme::text_muted()));
                     ui.label(d.delivery_date.to_string());
 
                     let badge_color = match d.status {
-                        DeliveryStatus::Delivered => Theme::SUCCESS,
-                        DeliveryStatus::InTransit => Theme::WARNING,
-                        DeliveryStatus::Pending => Theme::PRIMARY,
-                        DeliveryStatus::Cancelled => Theme::DANGER,
+                        DeliveryStatus::Delivered => Theme::success(),
+                        DeliveryStatus::InTransit => Theme::warning(),
+                        DeliveryStatus::Pending => Theme::primary(),
+                        DeliveryStatus::Cancelled => Theme::danger(),
                     };
                     Theme::status_badge(ui, d.status.as_str(), badge_color);
 
@@ -144,7 +144,7 @@ fn render_delivery_list(
                             }
                             DeliveryStatus::InTransit
                                 if ui
-                                    .button(RichText::new("Confirm Delivered").color(Theme::SUCCESS))
+                                    .button(RichText::new("Confirm Delivered").color(Theme::success()))
                                     .clicked() =>
                             {
                                 update_status(repo, d, DeliveryStatus::Delivered, notification);
@@ -178,7 +178,7 @@ fn render_delivery_form(
         ui.separator();
 
         if let Some(err) = &state.error_msg {
-            ui.label(RichText::new(err).color(Theme::DANGER).strong());
+            ui.label(RichText::new(err).color(Theme::danger()).strong());
             ui.add_space(4.0);
         }
 
@@ -273,7 +273,7 @@ fn render_delivery_form(
             if ui
                 .button(
                     RichText::new("Create & Dispatch DO")
-                        .color(Color32::WHITE)
+                        .color(Theme::text_strong())
                         .strong(),
                 )
                 .clicked()

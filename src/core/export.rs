@@ -40,6 +40,18 @@ impl InvoiceExporter {
         let filename = format!("{}.png", invoice.invoice_number.replace('/', "_"));
         let img_path = output_dir.join(filename);
 
+        let png_bytes = Self::render_png_bytes(invoice, company)?;
+        fs::write(&img_path, &png_bytes)
+            .map_err(|e| format!("Failed to save invoice image: {}", e))?;
+        Ok(img_path)
+    }
+
+    /// Renders the invoice document to PNG bytes without touching the disk.
+    /// Used for the in-app preview.
+    pub fn render_png_bytes(
+        invoice: &Invoice,
+        company: &CompanyProfile,
+    ) -> Result<Vec<u8>, String> {
         let width = 1240;
         let height = 1754;
         let mut img: ImageBuffer<Rgba<u8>, Vec<u8>> =
@@ -48,9 +60,23 @@ impl InvoiceExporter {
         // Draw professional document canvas
         Self::draw_invoice_canvas(&mut img, invoice, company);
 
-        img.save(&img_path)
-            .map_err(|e| format!("Failed to save invoice image: {}", e))?;
-        Ok(img_path)
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut bytes, image::ImageFormat::Png)
+            .map_err(|e| format!("Failed to encode invoice preview: {}", e))?;
+        Ok(bytes.into_inner())
+    }
+
+    /// Raw RGBA pixel buffer for direct egui texture upload (in-app preview).
+    pub fn render_rgba_pixels(
+        invoice: &Invoice,
+        company: &CompanyProfile,
+    ) -> (Vec<u8>, [usize; 2]) {
+        let width = 1240usize;
+        let height = 1754usize;
+        let mut img: ImageBuffer<Rgba<u8>, Vec<u8>> =
+            ImageBuffer::from_pixel(width as u32, height as u32, Rgba([250, 250, 252, 255]));
+        Self::draw_invoice_canvas(&mut img, invoice, company);
+        (img.into_raw(), [width, height])
     }
 
     /// Generates standard PDF-1.4 vector bytes for the invoice

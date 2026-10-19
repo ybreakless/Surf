@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
@@ -37,7 +37,7 @@ pub fn render(
             *notification = Some((summary.clone(), all_ok));
         } else {
             ui.label(
-                RichText::new("Running automation cycle in background...").color(Theme::PRIMARY),
+                RichText::new("Running automation cycle in background...").color(Theme::primary()),
             );
             ui.ctx().request_repaint_after(Duration::from_millis(400));
         }
@@ -51,7 +51,7 @@ pub fn render(
                  creates the day's database snapshot, bills due recurring templates, and scans for overdue invoices.",
             )
             .size(11.0)
-            .color(Theme::TEXT_MUTED),
+            .color(Theme::text_muted()),
         );
         ui.separator();
 
@@ -60,7 +60,7 @@ pub fn render(
             if ui
                 .add(
                     egui::Button::new(
-                        RichText::new("Run All Now").color(Color32::WHITE).strong(),
+                        RichText::new("Run All Now").color(Theme::text_strong()).strong(),
                     ),
                 )
                 .clicked()
@@ -70,7 +70,7 @@ pub fn render(
                     Some(automations::spawn_automations_worker(repo.db_path().to_path_buf()));
             }
             if let Some(s) = &state.last_summary {
-                ui.label(RichText::new(s).color(Theme::TEXT_MUTED).size(11.0));
+                ui.label(RichText::new(s).color(Theme::text_muted()).size(11.0));
             }
         });
     });
@@ -84,7 +84,7 @@ pub fn render(
             ui.label(
                 RichText::new(format!("{} runs recorded", count))
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         });
         ui.separator();
@@ -93,7 +93,7 @@ pub fn render(
         if logs.is_empty() {
             ui.label(
                 RichText::new("No runs recorded yet \u{2014} press Run All Now")
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
         } else {
             egui::ScrollArea::vertical()
@@ -103,18 +103,22 @@ pub fn render(
                         ui.horizontal(|ui| {
                             ui.label(
                                 RichText::new(if ok { "\u{2714}" } else { "\u{26A0}" })
-                                    .color(if ok { Theme::SUCCESS } else { Theme::DANGER })
+                                    .color(if ok {
+                                        Theme::success()
+                                    } else {
+                                        Theme::danger()
+                                    })
                                     .strong(),
                             );
                             ui.label(RichText::new(task).strong().size(12.0));
-                            ui.label(RichText::new(result).color(Color32::WHITE).size(12.0));
+                            ui.label(RichText::new(result).color(Theme::text_strong()).size(12.0));
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
                                     ui.label(
                                         RichText::new(fmt_time(&ran_at))
                                             .size(11.0)
-                                            .color(Theme::TEXT_MUTED),
+                                            .color(Theme::text_muted()),
                                     );
                                 },
                             );

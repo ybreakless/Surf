@@ -43,11 +43,16 @@ cargo fmt                     # project-style; run before commit
    must be idempotent.
 5. **egui 0.37 idioms in this codebase:** `egui::Frame::new()`,
    `CornerRadius::same(n)` (i32), `Margin::symmetric(w, h)` i32 args,
-   `ComboBox::from_id_salt`, and the eframe 0.37 `App` trait method takes
-   `ui`, **not** `update(...)`+CentralPanel — the shell already draws the top
-   bar; screens just render into `ui`.
-6. **Dark theme palette (`ui/theme.rs`)**: `Theme::PRIMARY = rgb(46,125,230)`,
-   BG_CARD 28,30,36, TEXT_MUTED 150,155,170. Use these, don't hardcode colors.
+    `ComboBox::from_id_salt`, and the eframe 0.37 `App` trait method takes
+    `ui`, **not** `update(...)`+CentralPanel — the shell already draws a left
+    sidebar (`egui::Panel::left("surf_side_bar")`); screens render into the
+    CentralPanel `ui`.
+6. **Theme modes (`ui/theme.rs`)**: dark (default) and light/black-&-white;
+   selection persisted in app_settings key `ui_theme`. Access colors only
+   through mode-aware fns (`Theme::primary()`, `Theme::bg_card()`,
+   `Theme::text_strong()`, `Theme::text_muted()`, `Theme::success()`, …);
+   brand blue stays rgb(46,125,230) in both modes. Never hardcode colors;
+   `Theme::apply_visuals(ctx)` must follow every `set_mode`.
 7. **Language**: code, identifiers, UI strings Spanish/English mix is not
    allowed — English UI copy, except currency symbols. Persian toman labels
    show as `… T`.

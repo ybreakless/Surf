@@ -32,7 +32,7 @@ pub fn render(
             ui.horizontal(|ui| {
                 ui.heading("Company Profile & Business Identity");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(RichText::new("Save Changes").color(Color32::WHITE).strong()).clicked() {
+                    if ui.button(RichText::new("Save Changes").color(Theme::text_strong()).strong()).clicked() {
                         match repo.save_company_profile(&state.profile) {
                             Ok(_) => {
                                 *notification = Some(("Company Profile updated successfully!".to_string(), true));
@@ -140,7 +140,7 @@ pub fn render(
             ui.label(
                 RichText::new("This is how your company identity, official stamp, and banking instructions appear on generated PDF and image invoices.")
                     .size(11.0)
-                    .color(Theme::TEXT_MUTED),
+                    .color(Theme::text_muted()),
             );
             ui.add_space(8.0);
 
@@ -153,13 +153,13 @@ pub fn render(
             preview_frame.show(ui, |ui| {
                 // Top blue strip
                 let (rect, _) = ui.allocate_exact_size(egui::Vec2::new(ui.available_width(), 4.0), egui::Sense::hover());
-                ui.painter().rect_filled(rect, CornerRadius::ZERO, Theme::PRIMARY);
+                ui.painter().rect_filled(rect, CornerRadius::ZERO, Theme::primary());
                 ui.add_space(12.0);
 
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
                         ui.label(RichText::new("TAX INVOICE").color(Color32::from_rgb(20, 25, 35)).strong().size(18.0));
-                        ui.label(RichText::new("INV-100-ARF-26001").color(Theme::PRIMARY).strong().size(12.0));
+                        ui.label(RichText::new("INV-100-ARF-26001").color(Theme::primary()).strong().size(12.0));
                     });
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
@@ -215,9 +215,9 @@ pub fn render(
                         if !state.profile.stamp_path.is_empty() {
                             let p = Path::new(&state.profile.stamp_path);
                             if p.exists() {
-                                ui.label(RichText::new("✓ Custom stamp file detected").color(Theme::SUCCESS).size(10.0));
+                                ui.label(RichText::new("✓ Custom stamp file detected").color(Theme::success()).size(10.0));
                             } else {
-                                ui.label(RichText::new("ℹ Using high-trust vector seal").color(Theme::PRIMARY).size(10.0));
+                                ui.label(RichText::new("ℹ Using high-trust vector seal").color(Theme::primary()).size(10.0));
                             }
                         }
                     });
@@ -233,7 +233,7 @@ pub fn render(
                             .inner_margin(egui::Margin::same(8));
 
                         bank_box.show(ui, |ui| {
-                            ui.label(RichText::new("WIRE INSTRUCTIONS").color(Theme::PRIMARY).strong().size(9.0));
+                            ui.label(RichText::new("WIRE INSTRUCTIONS").color(Theme::primary()).strong().size(9.0));
                             ui.label(RichText::new(format!("Bank: {}", state.profile.bank_name)).color(Color32::BLACK).size(9.0));
                             ui.label(RichText::new(format!("IBAN: {}", state.profile.bank_iban)).color(Color32::BLACK).size(9.0));
                             ui.label(RichText::new(format!("SWIFT: {}", state.profile.bank_swift)).color(Color32::BLACK).size(9.0));

@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use std::fs;
 
 use super::theme::Theme;
@@ -38,11 +38,11 @@ pub fn render(
                 ui.label(
                     RichText::new("DEVICE IDENTITY")
                         .size(11.0)
-                        .color(Theme::TEXT_MUTED)
+                        .color(Theme::text_muted())
                         .strong(),
                 );
                 ui.add_space(2.0);
-                ui.heading(RichText::new(&repo.device_id).color(Theme::PRIMARY));
+                ui.heading(RichText::new(&repo.device_id).color(Theme::primary()));
             });
 
             ui.add_space(32.0);
@@ -50,7 +50,7 @@ pub fn render(
                 ui.label(
                     RichText::new("RECORDED CHANGES")
                         .size(11.0)
-                        .color(Theme::TEXT_MUTED)
+                        .color(Theme::text_muted())
                         .strong(),
                 );
                 ui.add_space(2.0);
@@ -66,14 +66,14 @@ pub fn render(
                 ui.label(
                     RichText::new("PLATFORM TARGET")
                         .size(11.0)
-                        .color(Theme::TEXT_MUTED)
+                        .color(Theme::text_muted())
                         .strong(),
                 );
                 ui.add_space(2.0);
                 ui.label(
                     RichText::new("Linux (Host) • Ready for Win & Android")
                         .size(14.0)
-                        .color(Theme::SUCCESS),
+                        .color(Theme::success()),
                 );
             });
         });
@@ -97,7 +97,7 @@ pub fn render(
             });
 
             ui.add_space(12.0);
-            if ui.button(RichText::new("Export Sync File (.json)").color(Color32::WHITE).strong()).clicked() {
+            if ui.button(RichText::new("Export Sync File (.json)").color(Theme::text_strong()).strong()).clicked() {
                 match repo.export_sync_bundle() {
                     Ok(bundle) => match bundle.to_json() {
                         Ok(json) => match fs::write(&state.export_file_path, json) {
@@ -128,7 +128,7 @@ pub fn render(
                     "1. Export sync package here.\n2. Transfer via local WiFi, Syncthing, or USB to your other machine or phone.\n3. Import on target device to merge changes automatically.",
                 )
                 .size(11.0)
-                .color(Theme::TEXT_MUTED),
+                .color(Theme::text_muted()),
             );
         });
 
@@ -148,7 +148,7 @@ pub fn render(
 
             ui.add_space(12.0);
             ui.horizontal(|ui| {
-                if ui.button(RichText::new("Apply & Merge Package").color(Color32::WHITE).strong()).clicked() {
+                if ui.button(RichText::new("Apply & Merge Package").color(Theme::text_strong()).strong()).clicked() {
                     match SyncBundle::from_json(&state.import_json_buffer) {
                         Ok(bundle) => match repo.apply_sync_bundle(&bundle) {
                             Ok(count) => {
@@ -176,7 +176,7 @@ pub fn render(
 
             if let Some(msg) = &state.status_message {
                 ui.add_space(8.0);
-                ui.label(RichText::new(msg).color(Theme::DANGER));
+                ui.label(RichText::new(msg).color(Theme::danger()));
             }
         });
     });

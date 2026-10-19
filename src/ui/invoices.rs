@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, Utc};
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use rust_decimal::Decimal;
-use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -12,6 +12,7 @@ use crate::core::model::{
     Customer, DeliveryItem, DeliveryOrder, DeliveryStatus, Invoice, InvoiceItem, InvoiceStatus,
 };
 use crate::core::numbering::NumberingEngine;
+use crate::core::templates::{self, MessageLang};
 use crate::db::repository::Repository;
 
 pub struct InvoiceLineState {
@@ -21,6 +22,15 @@ pub struct InvoiceLineState {
     pub unit: String,
     pub unit_price: String,
     pub discount_pct: String,
+}
+
+/// Invoice document + sharing side state.
+#[derive(Default)]
+pub struct InvoiceViewState {
+    /// Currently opened in-app document preview: invoice id + rendered texture.
+    pub preview: Option<(Uuid, String, egui::TextureHandle)>,
+    /// Background Telegram upload worker (invoice number, result).
+    pub telegram_rx: Option<std::sync::mpsc::Receiver<(String, Result<(), String>)>>,
 }
 
 pub struct InvoiceFormState {
@@ -34,6 +44,8 @@ pub struct InvoiceFormState {
     pub tax_rate_str: String,
     pub notes: String,
     pub error_msg: Option<String>,
+    pub filter: String,
+    pub view: InvoiceViewState,
 }
 
 impl Default for InvoiceFormState {
@@ -59,6 +71,8 @@ impl Default for InvoiceFormState {
             tax_rate_str: "5.0".to_string(),
             notes: "Payment due within 30 days.".to_string(),
             error_msg: None,
+            filter: String::new(),
+            view: InvoiceViewState::default(),
         }
     }
 }
@@ -93,6 +107,24 @@ pub fn render(
 ) {
     ui.add_space(8.0);
 
+    // Poll the background Telegram uploader (keeps the GUI non-blocking).
+    if let Some(rx) = &state.view.telegram_rx {
+        match rx.try_recv() {
+            Ok((number, Ok(()))) => {
+                state.view.telegram_rx = None;
+                *notification = Some((format!("Invoice {number} sent to Telegram!"), true));
+            }
+            Ok((number, Err(e))) => {
+                state.view.telegram_rx = None;
+                *notification = Some((format!("Telegram send failed for {number}: {}", e), false));
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                state.view.telegram_rx = None;
+            }
+        }
+    }
+
     let customers = repo.get_customers().unwrap_or_default();
     let invoices = repo.get_invoices().unwrap_or_default();
 
@@ -100,6 +132,53 @@ pub fn render(
         render_invoice_form(ui, repo, state, &customers, notification);
     } else {
         render_invoice_list(ui, repo, state, &invoices, &customers, notification);
+        render_preview_window(ui.ctx(), state, notification);
+    }
+}
+
+/// In-app invoice document preview (rendered from the same canvas as the PDF/PNG exports).
+fn render_preview_window(
+    ctx: &egui::Context,
+    state: &mut InvoiceFormState,
+    notification: &mut Option<(String, bool)>,
+) {
+    if let Some((_, number, handle)) = &state.view.preview {
+        let window_title = format!("Preview - {}", number);
+        let mut keep_open = true;
+        let mut close_pressed = false;
+        egui::Window::new(window_title)
+            .open(&mut keep_open)
+            .resizable(true)
+            .collapsible(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.add(
+                    egui::Image::from_texture(&handle.clone())
+                        .fit_to_exact_size(egui::vec2(620.0, 876.0)),
+                );
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    let number = number.clone();
+                    let pdf_path = crate::services::share::exports_dir().join("pdf");
+                    if ui.button("Open PDF in system viewer").clicked() {
+                        let path = pdf_path.join(format!("{}.pdf", number.replace('/', "_")));
+                        match crate::services::share::open_in_default_app(&path.to_string_lossy()) {
+                            Ok(()) => {
+                                *notification = Some((format!("Opened {}", path.display()), true));
+                            }
+                            Err(e) => {
+                                *notification = Some((e, false));
+                            }
+                        }
+                    }
+                    if ui.button("Close Preview").clicked() {
+                        close_pressed = true;
+                    }
+                });
+            });
+        if !keep_open || close_pressed {
+            state.view.preview = None;
+        }
     }
 }
 
@@ -111,6 +190,13 @@ fn render_invoice_list(
     customers: &[Customer],
     notification: &mut Option<(String, bool)>,
 ) {
+    let company = repo.get_company_profile();
+    let share_lang = MessageLang::from_code(
+        repo.get_setting("share_language")
+            .unwrap_or_default()
+            .as_str(),
+    );
+
     Theme::card_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.heading("Sales Invoices");
@@ -118,7 +204,7 @@ fn render_invoice_list(
                 if ui
                     .button(
                         RichText::new("+ Create New Invoice")
-                            .color(Color32::WHITE)
+                            .color(Theme::text_strong())
                             .strong(),
                     )
                     .clicked()
@@ -139,15 +225,53 @@ fn render_invoice_list(
                 }
             });
         });
+        ui.add_space(6.0);
+
+        // Quick filter
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new("Search:")
+                    .color(Theme::text_muted())
+                    .size(12.0),
+            );
+            ui.add(
+                egui::TextEdit::singleline(&mut state.filter)
+                    .hint_text("Invoice #, customer, status...")
+                    .desired_width(260.0),
+            );
+            if !state.filter.is_empty() && ui.small_button("Clear").clicked() {
+                state.filter.clear();
+            }
+        });
         ui.separator();
 
         if invoices.is_empty() {
             ui.add_space(16.0);
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new("No invoices created yet.").color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("No invoices created yet.").color(Theme::text_muted()));
                 ui.label("Click '+ Create New Invoice' above to draft your first invoice.");
             });
             ui.add_space(16.0);
+            return;
+        }
+
+        let query = state.filter.trim().to_lowercase();
+        let filtered: Vec<&Invoice> = invoices
+            .iter()
+            .filter(|i| {
+                query.is_empty()
+                    || i.invoice_number.to_lowercase().contains(&query)
+                    || i.customer_name.to_lowercase().contains(&query)
+                    || i.status.as_str().to_lowercase().contains(&query)
+            })
+            .collect();
+
+        if filtered.is_empty() {
+            ui.add_space(12.0);
+            ui.label(
+                RichText::new(format!("No invoices match '{}'.", state.filter))
+                    .color(Theme::text_muted()),
+            );
             return;
         }
 
@@ -168,15 +292,17 @@ fn render_invoice_list(
             });
         ui.separator();
 
+        let list_height = (ui.available_height() - 16.0).max(240.0);
         egui::ScrollArea::vertical()
-            .max_height(480.0)
+            .auto_shrink(false)
+            .max_height(list_height)
             .show(ui, |ui| {
-                for inv in invoices {
+                for inv in filtered {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(&inv.invoice_number).strong());
                         ui.label(
                             RichText::new(format!("[{}]", inv.postal_zone))
-                                .color(Theme::PRIMARY)
+                                .color(Theme::primary())
                                 .size(12.0),
                         );
                         ui.label(&inv.customer_name);
@@ -191,71 +317,55 @@ fn render_invoice_list(
                         );
 
                         let badge_color = match inv.status {
-                            InvoiceStatus::Paid => Theme::SUCCESS,
-                            InvoiceStatus::Sent => Theme::PRIMARY,
-                            InvoiceStatus::Draft => Theme::TEXT_MUTED,
-                            InvoiceStatus::Cancelled => Theme::DANGER,
+                            InvoiceStatus::Paid => Theme::success(),
+                            InvoiceStatus::Sent => Theme::primary(),
+                            InvoiceStatus::Draft => Theme::text_muted(),
+                            InvoiceStatus::Cancelled => Theme::danger(),
                         };
                         Theme::status_badge(ui, inv.status.as_str(), badge_color);
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            // Mark as Paid Button
-                            if inv.status != InvoiceStatus::Paid
-                                && ui
-                                    .button(RichText::new("Mark Paid").color(Theme::SUCCESS))
-                                    .clicked()
-                            {
-                                mark_invoice_as_paid(repo, inv, notification);
-                            }
-
-                            // Export Image Button
-                            if ui.button("🖼️ PNG").clicked() {
-                                let company = repo.get_company_profile();
-                                match InvoiceExporter::export_to_image(
-                                    inv,
-                                    &company,
-                                    Path::new("exports/images"),
-                                ) {
-                                    Ok(p) => {
-                                        *notification = Some((
-                                            format!(
-                                                "Invoice PNG image exported to '{}'!",
-                                                p.display()
-                                            ),
-                                            true,
-                                        ));
-                                    }
-                                    Err(e) => {
-                                        *notification =
-                                            Some((format!("Export image error: {}", e), false));
-                                    }
-                                }
-                            }
-
-                            // Export PDF Button
-                            if ui.button("📄 PDF").clicked() {
-                                let company = repo.get_company_profile();
-                                match InvoiceExporter::export_to_pdf(
-                                    inv,
-                                    &company,
-                                    Path::new("exports/pdf"),
-                                ) {
-                                    Ok(p) => {
-                                        *notification = Some((
-                                            format!("Invoice PDF exported to '{}'!", p.display()),
-                                            true,
-                                        ));
-                                    }
-                                    Err(e) => {
-                                        *notification =
-                                            Some((format!("Export PDF error: {}", e), false));
-                                    }
-                                }
-                            }
+                            // Share submenu (preview / open / send)
+                            render_share_menu(
+                                ui,
+                                repo,
+                                state,
+                                inv,
+                                &company,
+                                share_lang,
+                                notification,
+                            );
 
                             // Generate Delivery Order Button
                             if ui.button("Create DO").clicked() {
                                 create_delivery_order_from_invoice(repo, inv, notification);
+                            }
+
+                            // Export PDF Button
+                            if ui.button("PDF").clicked() {
+                                notify_export(
+                                    InvoiceExporter::export_to_pdf(inv, &company, &pdf_dir()),
+                                    "Invoice PDF exported to",
+                                    notification,
+                                );
+                            }
+
+                            // Export Image Button
+                            if ui.button("PNG").clicked() {
+                                notify_export(
+                                    InvoiceExporter::export_to_image(inv, &company, &img_dir()),
+                                    "Invoice PNG image exported to",
+                                    notification,
+                                );
+                            }
+
+                            // Mark as Paid Button
+                            if inv.status != InvoiceStatus::Paid
+                                && ui
+                                    .button(RichText::new("Mark Paid").color(Theme::success()))
+                                    .clicked()
+                            {
+                                mark_invoice_as_paid(repo, inv, notification);
                             }
                         });
                     });
@@ -263,6 +373,151 @@ fn render_invoice_list(
                 }
             });
     });
+}
+
+fn pdf_dir() -> PathBuf {
+    crate::services::share::exports_dir().join("pdf")
+}
+
+fn img_dir() -> PathBuf {
+    crate::services::share::exports_dir().join("images")
+}
+
+fn notify_export(
+    result: Result<PathBuf, String>,
+    success_prefix: &str,
+    notification: &mut Option<(String, bool)>,
+) {
+    match result {
+        Ok(p) => {
+            *notification = Some((format!("{} '{}'!", success_prefix, p.display()), true));
+        }
+        Err(e) => {
+            *notification = Some((format!("Export error: {}", e), false));
+        }
+    }
+}
+
+/// Compact "..." action menu for one invoice row.
+fn render_share_menu(
+    ui: &mut egui::Ui,
+    repo: &Repository,
+    state: &mut InvoiceFormState,
+    inv: &Invoice,
+    company: &crate::core::model::CompanyProfile,
+    share_lang: MessageLang,
+    notification: &mut Option<(String, bool)>,
+) {
+    let mut action = None;
+    ui.menu_button("...", |ui| {
+        if ui.button("Preview in App").clicked() {
+            action = Some("preview");
+        }
+        if ui.button("Open PDF (system viewer)").clicked() {
+            action = Some("open_pdf");
+        }
+        if ui.button("Send file via Telegram").clicked() {
+            action = Some("telegram");
+        }
+        if ui.button("Share to WhatsApp").clicked() {
+            action = Some("whatsapp");
+        }
+        if ui.button("Copy PDF file path").clicked() {
+            action = Some("copy_path");
+        }
+    });
+
+    let Some(action) = action else { return };
+
+    match action {
+        "preview" => {
+            let (rgba, size) = InvoiceExporter::render_rgba_pixels(inv, company);
+            let image = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
+            let handle =
+                ui.ctx()
+                    .load_texture("invoice_preview", image, egui::TextureOptions::LINEAR);
+            state.view.preview = Some((inv.id, inv.invoice_number.clone(), handle));
+        }
+        "open_pdf" => {
+            let pdf_path = pdf_dir().join(format!("{}.pdf", inv.invoice_number.replace('/', "_")));
+            if !pdf_path.exists() {
+                let _ = InvoiceExporter::export_to_pdf(inv, company, &pdf_dir());
+            }
+            match crate::services::share::open_in_default_app(&pdf_path.to_string_lossy()) {
+                Ok(()) => {
+                    *notification = Some((format!("Opened {}", pdf_path.display()), true));
+                }
+                Err(e) => {
+                    *notification = Some((e, false));
+                }
+            }
+        }
+        "telegram" => {
+            let pdf_path = pdf_dir().join(format!("{}.pdf", inv.invoice_number.replace('/', "_")));
+            if !pdf_path.exists() {
+                let _ = InvoiceExporter::export_to_pdf(inv, company, &pdf_dir());
+            }
+            let db_path = repo.db_path().to_path_buf();
+            let number = inv.invoice_number.clone();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let path_for_thread = pdf_path.clone();
+            std::thread::spawn(move || {
+                let res = match Repository::new(&db_path) {
+                    Ok(worker_repo) => crate::services::share::send_document_to_telegram(
+                        &worker_repo,
+                        &path_for_thread,
+                    ),
+                    Err(e) => Err(format!("Cannot open database: {}", e)),
+                };
+                tx.send((number, res.map_err(|e| e.to_string()))).ok();
+            });
+            state.view.telegram_rx = Some(rx);
+            *notification = Some((
+                format!(
+                    "Sending {} to Telegram in background...",
+                    inv.invoice_number
+                ),
+                true,
+            ));
+        }
+        "whatsapp" => {
+            let pdf_path = pdf_dir().join(format!("{}.pdf", inv.invoice_number.replace('/', "_")));
+            if !pdf_path.exists() {
+                let _ = InvoiceExporter::export_to_pdf(inv, company, &pdf_dir());
+            }
+            let customers = repo.get_customers().unwrap_or_default();
+            let phone = customers
+                .iter()
+                .find(|c| c.id == inv.customer_id)
+                .map(|c| c.phone.clone())
+                .unwrap_or_default();
+
+            let link = crate::services::share::wa_me_link(
+                &phone,
+                &templates::compose_short_invoice_share(share_lang, inv),
+            );
+            match crate::services::share::open_in_default_app(&link) {
+                Ok(()) => {
+                    *notification = Some((
+                        format!(
+                            "WhatsApp chat opened. Attach the exported PDF from '{}' if your WhatsApp app supports it.",
+                            pdf_path.display()
+                        ),
+                        true,
+                    ));
+                }
+                Err(e) => {
+                    *notification = Some((e, false));
+                }
+            }
+        }
+        "copy_path" => {
+            let pdf_path = pdf_dir().join(format!("{}.pdf", inv.invoice_number.replace('/', "_")));
+            ui.ctx().copy_text(pdf_path.to_string_lossy().to_string());
+            *notification = Some((format!("Path copied: {}", pdf_path.display()), true));
+        }
+        _ => {}
+    }
 }
 
 fn render_invoice_form(
@@ -284,7 +539,7 @@ fn render_invoice_form(
         ui.separator();
 
         if let Some(err) = &state.error_msg {
-            ui.label(RichText::new(err).color(Theme::DANGER).strong());
+            ui.label(RichText::new(err).color(Theme::danger()).strong());
             ui.add_space(4.0);
         }
 
@@ -339,14 +594,14 @@ fn render_invoice_form(
                     "Excel-Style Live Formula Grid: Line Total = (Qty * Price) * (1 - Disc%)",
                 )
                 .size(11.0)
-                .color(Theme::TEXT_MUTED),
+                .color(Theme::text_muted()),
             );
         });
         ui.separator();
 
         // Excel Column Headers Bar
         let header_frame = egui::Frame::new()
-            .fill(Color32::from_rgb(32, 38, 50))
+            .fill(Theme::bg_card_light())
             .inner_margin(egui::Margin::symmetric(8, 4))
             .corner_radius(egui::CornerRadius::same(3));
 
@@ -356,49 +611,49 @@ fn render_invoice_form(
                     RichText::new("A: #")
                         .strong()
                         .size(11.0)
-                        .color(Theme::PRIMARY),
+                        .color(Theme::primary()),
                 );
                 ui.add_space(12.0);
                 ui.label(
                     RichText::new("B: Item / Service Description")
                         .strong()
                         .size(11.0)
-                        .color(Color32::WHITE),
+                        .color(Theme::text_strong()),
                 );
                 ui.add_space(100.0);
                 ui.label(
                     RichText::new("C: Qty")
                         .strong()
                         .size(11.0)
-                        .color(Color32::WHITE),
+                        .color(Theme::text_strong()),
                 );
                 ui.add_space(20.0);
                 ui.label(
                     RichText::new("D: Unit")
                         .strong()
                         .size(11.0)
-                        .color(Color32::WHITE),
+                        .color(Theme::text_strong()),
                 );
                 ui.add_space(18.0);
                 ui.label(
                     RichText::new("E: Price ($)")
                         .strong()
                         .size(11.0)
-                        .color(Color32::WHITE),
+                        .color(Theme::text_strong()),
                 );
                 ui.add_space(20.0);
                 ui.label(
                     RichText::new("F: Disc%")
                         .strong()
                         .size(11.0)
-                        .color(Color32::WHITE),
+                        .color(Theme::text_strong()),
                 );
                 ui.add_space(20.0);
                 ui.label(
                     RichText::new("G: Line Total")
                         .strong()
                         .size(11.0)
-                        .color(Theme::SUCCESS),
+                        .color(Theme::success()),
                 );
             });
         });
@@ -512,7 +767,7 @@ fn render_invoice_form(
                                 &display_currency,
                                 total_amount,
                             ))
-                            .color(Theme::SUCCESS)
+                            .color(Theme::success())
                             .size(20.0),
                         );
                     });
@@ -527,7 +782,7 @@ fn render_invoice_form(
             if ui
                 .button(
                     RichText::new("Post & Issue Invoice")
-                        .color(Color32::WHITE)
+                        .color(Theme::text_strong())
                         .strong(),
                 )
                 .clicked()
@@ -653,9 +908,8 @@ fn save_and_post_invoice(
     match repo.insert_invoice(&invoice, true) {
         Ok(_) => {
             let company = repo.get_company_profile();
-            let _ = InvoiceExporter::export_to_pdf(&invoice, &company, Path::new("exports/pdf"));
-            let _ =
-                InvoiceExporter::export_to_image(&invoice, &company, Path::new("exports/images"));
+            let _ = InvoiceExporter::export_to_pdf(&invoice, &company, &pdf_dir());
+            let _ = InvoiceExporter::export_to_image(&invoice, &company, &img_dir());
 
             *notification = Some((
                 format!(
