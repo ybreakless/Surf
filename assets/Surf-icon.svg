@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Clip Path for Squircle Interior -->
+    <clipPath id="squircle-clip">
+      <rect x="28" y="28" width="456" height="456" rx="104" />
+    </clipPath>
+
+    <!-- Deep Obsidian Background -->
+    <linearGradient id="bg-obsidian" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A1228" />
+      <stop offset="55%" stop-color="#070D1D" />
+      <stop offset="100%" stop-color="#040711" />
+    </linearGradient>
+
+    <!-- Neon Cyan Rim Border Gradient -->
+    <linearGradient id="cyan-rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67E8F9" />
+      <stop offset="50%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+
+    <!-- Deep Indigo Rear Wave -->
+    <linearGradient id="wave-indigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="50%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+
+    <!-- Mid Ocean Blue Barrel Wave -->
+    <linearGradient id="wave-ocean" x1="10%" y1="80%" x2="85%" y2="15%">
+      <stop offset="0%" stop-color="#0369A1" />
+      <stop offset="50%" stop-color="#0EA5E9" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <!-- Outer Seafoam Mint Cresting Wave -->
+    <linearGradient id="wave-mint" x1="25%" y1="90%" x2="80%" y2="10%">
+      <stop offset="0%" stop-color="#0D9488" />
+      <stop offset="50%" stop-color="#2DD4BF" />
+      <stop offset="100%" stop-color="#A7F3D0" />
+    </linearGradient>
+
+    <!-- Foreground Lower Wave Ribbon -->
+    <linearGradient id="wave-front" x1="0%" y1="30%" x2="100%" y2="70%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="45%" stop-color="#14B8A6" />
+      <stop offset="100%" stop-color="#99F6E4" />
+    </linearGradient>
+
+    <!-- Surfboard Pearl Deck Gradient -->
+    <linearGradient id="board-deck" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#F1F5F9" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+
+    <!-- Metallic Gold Stringer, Tail & Apex Node -->
+    <linearGradient id="gold-craft" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#B45309" />
+      <stop offset="45%" stop-color="#F59E0B" />
+      <stop offset="80%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#FEF08A" />
+    </linearGradient>
+
+    <!-- Outer Cyan Glow Filter -->
+    <filter id="rim-glow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#38BDF8" flood-opacity="0.45" />
+    </filter>
+
+    <!-- Soft Depth Shadow for Surfboard & Waves -->
+    <filter id="drop-depth" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- 1. Glowing Squircle Frame -->
+  <rect x="28" y="28" width="456" height="456" rx="104" fill="url(#bg-obsidian)" stroke="url(#cyan-rim)" stroke-width="7" filter="url(#rim-glow)" />
+
+  <!-- 2. Clipped Interior Scene -->
+  <g clip-path="url(#squircle-clip)">
+
+    <!-- Subtle Dotted Accounting Ledger Grid -->
+    <g stroke="#38BDF8" stroke-opacity="0.22" stroke-width="1.5" stroke-dasharray="2 7">
+      <line x1="116" y1="60" x2="116" y2="460" />
+      <line x1="192" y1="60" x2="192" y2="460" />
+      <line x1="268" y1="60" x2="268" y2="460" />
+      <line x1="344" y1="60" x2="344" y2="460" />
+      <line x1="60" y1="196" x2="460" y2="196" />
+      <line x1="60" y1="272" x2="460" y2="272" />
+      <line x1="60" y1="348" x2="460" y2="348" />
+    </g>
+
+    <!-- Layer A: Deep Indigo Rear Swell (Left) -->
+    <path d="M 18 282
+             C 68 232, 134 238, 188 278
+             C 242 318, 290 380, 290 488
+             L 18 488 Z" fill="url(#wave-indigo)" opacity="0.88" />
+
+    <!-- Layer B: Outer Seafoam Mint Cresting Wave (Right Barrel) -->
+    <path d="M 278 148
+             C 302 92, 374 88, 422 142
+             C 472 198, 474 308, 412 384
+             C 356 452, 246 462, 162 420
+             C 254 432, 348 394, 384 316
+             C 414 250, 398 166, 342 142
+             C 314 130, 292 134, 278 148 Z" fill="url(#wave-mint)" filter="url(#drop-depth)" />
+
+    <!-- Layer C: Inner Cyan/Ocean Barrel Spiral -->
+    <path d="M 26 350
+             C 88 282, 176 286, 248 292
+             C 316 298, 358 258, 354 204
+             C 350 162, 316 140, 278 148
+             C 324 122, 384 148, 396 212
+             C 410 284, 358 362, 266 368
+             C 180 374, 108 336, 26 402 Z" fill="url(#wave-ocean)" filter="url(#drop-depth)" />
+
+    <!-- Layer D: Foreground Sweeping Wave Ribbon (Bottom) -->
+    <path d="M 20 388
+             C 92 314, 174 318, 256 372
+             C 332 422, 414 418, 488 358
+             L 488 490
+             L 20 490 Z" fill="url(#wave-front)" filter="url(#drop-depth)" />
+
+    <!-- Deep Trough Accent at Bottom Left -->
+    <path d="M 20 428
+             C 90 380, 172 396, 258 452
+             C 314 488, 378 492, 446 472
+             L 488 492 L 20 492 Z" fill="#0F2942" opacity="0.75" />
+
+    <!-- 3. Angled Surfboard & Golden Trendline Assembly -->
+    <!-- Centered at (216, 266) and angled at 46 degrees toward the top-right crest -->
+    <g transform="translate(216, 266) rotate(46)" filter="url(#drop-depth)">
+
+      <!-- Golden Wake / Trendline Tail Extension -->
+      <line x1="0" y1="108" x2="0" y2="185" stroke="url(#gold-craft)" stroke-width="3" stroke-opacity="0.45" stroke-linecap="round" />
+
+      <!-- Twin Gold Surfboard Fins (Left & Right of Tail) -->
+      <path d="M -18 82 C -32 94, -34 110, -22 118 C -18 106, -15 96, -12 88 Z" fill="url(#gold-craft)" />
+      <path d="M 18 82 C 32 94, 34 110, 22 118 C 18 106, 15 96, 12 88 Z" fill="url(#gold-craft)" />
+
+      <!-- Main Surfboard Body (Pointed Nose at y=-124, Swallow Tail at y=+102) -->
+      <path d="M 0 -124
+               C 24 -86, 34 -32, 32 24
+               C 30 62, 22 88, 12 104
+               L 0 92
+               L -12 104
+               C -22 88, -30 62, -32 24
+               C -34 -32, -24 -86, 0 -124 Z" fill="url(#board-deck)" stroke="#E2E8F0" stroke-width="1.5" />
+
+      <!-- Subtle Mid-Deck Shading for 3D Contour -->
+      <path d="M 0 -124
+               C 24 -86, 34 -32, 32 24
+               C 30 62, 22 88, 12 104
+               L 0 92 Z" fill="#94A3B8" opacity="0.18" />
+
+      <!-- Golden ArtCraft Tail Block -->
+      <path d="M 0 18
+               C 12 36, 22 56, 25 74
+               C 22 88, 17 97, 12 104
+               L 0 92
+               L -12 104
+               C -17 97, -22 88, -25 74
+               C -22 56, -12 36, 0 18 Z" fill="url(#gold-craft)" />
+
+      <!-- Golden Stringer Line Extending Through Nose to the Wave Crest -->
+      <line x1="0" y1="92" x2="0" y2="-242" stroke="url(#gold-craft)" stroke-width="4" stroke-linecap="round" />
+
+      <!-- Golden Apex Node at the Top of the Trendline -->
+      <circle cx="0" cy="-242" r="11" fill="url(#gold-craft)" />
+      <circle cx="0" cy="-242" r="5" fill="#FEF9C3" opacity="0.85" />
+    </g>
+
+  </g>
+
+  <!-- 4. Crisp Inner Bevel Highlight -->
+  <rect x="31" y="31" width="450" height="450" rx="101" fill="none" stroke="#BAE6FD" stroke-opacity="0.35" stroke-width="1.5" />
+</svg>

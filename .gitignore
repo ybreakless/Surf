@@ -1,0 +1,8 @@
+/target/
+/surf_data.db
+/surf_data.db-shm
+/surf_data.db-wal
+surf_data.db-journal
+*.db.bak
+exports/
+/tmp/
